@@ -45,6 +45,12 @@ mapa onde há gente sem atendimento. Municípios processados: **Arapiraca/AL** (
   no raio e como a cobertura do município muda. Arraste o marcador para comparar terrenos.
 - **Tempo a pé:** cada raio aparece também em minutos (80 m por minuto, ajustável em `velocidade_caminhada_m_min`).
 - **Upload do IPTU** (só gestor): aceita CSV com lat/long, GeoPackage, GeoJSON ou shapefile. Hoje só recebe e valida.
+- **Cadastro de equipamentos** (`/equipamentos`, botão "Equipamentos" no topo): lista de cada tipo com endereço,
+  bairro e capacidade, ao lado do dado oficial. O gestor corrige nome, endereço, local no mapa e capacidade (vagas nas
+  escolas; equipes ou pessoas nas UBS), marca unidades fechadas e inclui as que abriram depois do censo. A conta de
+  consulta só vê. Os ajustes ficam em `dados/brutos/municipios/{código}/prefeitura/equipamentos_ajustes.json`
+  (fora do git), valem na hora para o mapa, o simulador e o relatório, e cada mudança vai para a trilha de atividade.
+  "Voltar ao oficial" apaga o ajuste e devolve o dado do INEP/CNES.
 
 > Os mosaicos de tile.openstreetmap.org servem para desenvolvimento e demonstração. Para uso em produção
 > com várias prefeituras, a [política de uso do OSM](https://operations.osmfoundation.org/policies/tiles/)
@@ -181,7 +187,11 @@ O ensino médio (rede estadual) aparece só como camada de contexto, fora dos in
   checagem com a Secretaria de Educação antes de usar os números em processo oficial.
 - Os raios e metas em `config/parametros.yaml` são **padrões iniciais a revisar**; cada valor
   tem um campo `fonte` para registrar a referência adotada.
-- Capacidade escolar usa **matrículas** como aproximação até haver dado de vagas.
+- Capacidade escolar usa **matrículas** como aproximação até haver dado de vagas; a prefeitura informa as vagas
+  reais no cadastro de equipamentos, e elas passam a valer no lugar das matrículas. Vaga 0 tira a escola da etapa.
+- UBS: capacidade = equipes × `pessoas_por_equipe` (3.500, a revisar), a não ser que a prefeitura informe outro número.
+- As saídas em lote de `calcular_cobertura.py` (indicadores.json, cobertura_hex.parquet) também usam os ajustes, mas só
+  quando o script roda de novo; o índice de prioridade em linha reta do mapa vem dessas saídas.
 
 ## 6. Desenvolvimento (Windows)
 

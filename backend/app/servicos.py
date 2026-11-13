@@ -92,9 +92,10 @@ def equipamentos(cod: str) -> dict:
                 "id": r.id, "tipo": t, "nome": r.nome, "rede": r.rede, "capacidade": _num(r.capacidade),
                 "fonte_coord": r.fonte_coord, "bairro": _num(sit["NM_BAIRRO"].iloc[i]), "rural": bool(rural),
                 "raio_m": cfg["raio_m"] * (b.fr if rural else 1),
+                "ajuste_prefeitura": bool(s.get("ajuste_prefeitura", False)),
             }
             if cfg["fonte_dados"] == "cnes":
-                props.update({"equipes": _num(s["equipes_ab"]), "endereco": f"{s['logradouro']}, {s['numero']} – {s['bairro']}"})
+                props.update({"equipes": _num(s["equipes_ab"]), "endereco": endereco_ubs(s)})
             else:
                 props.update({k: _num(s[k]) for k in ["mat_creche", "mat_pre_escola", "mat_fund_iniciais", "mat_fund_finais"]})
             feats.append({"type": "Feature", "properties": props,
@@ -109,6 +110,94 @@ def equipamentos(cod: str) -> dict:
             "fonte_coord": r.fonte_coord, "bairro": None, "rural": False, "mat_medio": _num(r.mat_medio)},
             "geometry": {"type": "Point", "coordinates": [r.geometry.x, r.geometry.y]}})
     return _fc(feats)
+
+
+def endereco_ubs(s) -> str | None:
+    """'Rua X, 12 – Bairro', pulando as partes vazias (ajustes da prefeitura trazem o endereço numa linha só)."""
+    def ok(v):
+        return v is not None and not (isinstance(v, float) and np.isnan(v)) and str(v).strip() not in ("", "nan", "None")
+    rua = ", ".join(str(v).strip() for v in (s.get("logradouro"), s.get("numero")) if ok(v))
+    partes = [p for p in (rua, str(s.get("bairro")).strip() if ok(s.get("bairro")) else "") if p]
+    return " – ".join(partes) or None
+
+
+@lru_cache(maxsize=32)
+def lista_equipamentos(cod: str, t: str) -> dict:
+    """Cadastro de um tipo de equipamento para conferência: dado oficial ao lado do ajustado.
+
+    Entram as unidades que oferecem o serviço na base oficial ou depois dos ajustes,
+    as excluídas pela prefeitura (para poder desfazer) e as incluídas por ela."""
+    from .analise import ajustes as aj_mod
+
+    checa_tipo(cod, t)
+    b = base(cod)
+    cfg = b.P["equipamentos"][t]
+    aj = b.ajustes.get("unidades", {})
+    ubs = cfg["fonte_dados"] == "cnes"
+    ppe = float(cfg.get("pessoas_por_equipe", 0)) if ubs else None
+    if ubs:
+        atual, oficial, col_id = b.ubs, b.ubs_oficial.set_index("cnes"), "cnes"
+    else:
+        redes = [r.capitalize() for r in cfg.get("redes", ["Municipal"])]
+        atual = b.escolas[b.escolas["dependencia"].isin(redes)]
+        oficial, col_id = b.escolas_oficial.set_index("codigo_inep"), "codigo_inep"
+
+    escolhidas, extra = [], []
+    for i, r in enumerate(atual.itertuples(index=False)):
+        ident = str(getattr(r, col_id))
+        chave = aj_mod.chave_da_unidade("ubs" if ubs else "escola", ident)
+        a = aj.get(chave, {})
+        of = oficial.loc[ident] if ident in oficial.index else None
+        if isinstance(of, pd.DataFrame):
+            of = of.iloc[0]
+        if ubs:
+            no_oficial = of is not None and bool(of["ativa"])
+            no_atual = bool(r.ativa)
+            cap_of = float(of["equipes_ab"]) * ppe if of is not None else None
+            cap_est = float(r.equipes_ab) * ppe
+        else:
+            no_oficial = of is not None and bool(of["em_funcionamento"]) and bool(of[cfg["oferta"]])
+            no_atual = bool(r.em_funcionamento) and bool(getattr(r, cfg["oferta"]))
+            cap_of = float(of[cfg["capacidade"]]) if of is not None else None
+            cap_est = float(getattr(r, cfg["capacidade"]))
+        mexeu_no_tipo = t in (a.get("capacidade") or {})
+        if not (no_oficial or no_atual or mexeu_no_tipo):
+            continue
+        cap_aj = getattr(r, f"cap_{t}", np.nan)
+        capacidade = float(cap_aj) if pd.notna(cap_aj) else cap_est
+        escolhidas.append(i)
+        extra.append({
+            "chave": chave, "id": ident, "nome": r.nome if ubs else r.escola,
+            "endereco": endereco_ubs(r._asdict()) if ubs else _num(r.endereco),
+            "rede": "Municipal" if ubs else r.dependencia,
+            "capacidade": round(capacidade), "capacidade_oficial": None if cap_of is None else round(cap_of),
+            "capacidade_informada": bool(pd.notna(cap_aj)),
+            "equipes": int(r.equipes_ab) if ubs else None,
+            "equipes_oficial": int(of["equipes_ab"]) if ubs and of is not None else None,
+            "nova": chave.startswith("pref:"), "excluida": bool(a.get("excluida")),
+            "ajustada": bool(a) and not chave.startswith("pref:"),
+            "campos_ajustados": sorted(k for k in a if k in ("nome", "endereco", "lat", "capacidade", "equipes", "excluida")),
+            "alterado_por": a.get("alterado_por"), "alterado_em": a.get("alterado_em"),
+            "fonte_coord": _num(r.fonte_coord),
+        })
+    sel = atual.iloc[escolhidas]
+    tem_geo = ~(sel.geometry.isna() | sel.geometry.is_empty)
+    ll = sel.geometry.to_crs(WGS84)
+    sit = b.situacao(sel.geometry[tem_geo]) if tem_geo.any() else pd.DataFrame()
+    j = 0
+    for k, linha in enumerate(extra):
+        if tem_geo.iloc[k]:
+            linha["lon"], linha["lat"] = round(float(ll.iloc[k].x), 6), round(float(ll.iloc[k].y), 6)
+            linha["bairro"] = _num(sit["NM_BAIRRO"].iloc[j]) if len(sit) else None
+            linha["rural"] = bool(sit["SITUACAO"].iloc[j] != "Urbana") if len(sit) and pd.notna(sit["SITUACAO"].iloc[j]) else False
+            j += 1
+        else:
+            linha.update({"lon": None, "lat": None, "bairro": None, "rural": False})
+    extra.sort(key=lambda x: (x["excluida"], str(x["nome"]).upper()))
+    return {"tipo": t, "rotulo": cfg["rotulo"], "fonte": "cnes" if ubs else "inep",
+            "unidade_capacidade": "pessoas" if ubs else "vagas",
+            "pessoas_por_equipe": ppe, "redes": ["Municipal"] if ubs else cfg.get("redes", ["Municipal"]),
+            "atendidos": UNIDADE.get(t, "pessoas"), "linhas": extra}
 
 
 def velocidade(cod: str) -> float:
@@ -370,7 +459,7 @@ def esquecer(cod: str | None = None) -> None:
     """Limpa os caches (depois de reprocessar dados ou mudar parâmetros)."""
     from .analise import contexto
     for f in (equipamentos, cobertura, areas, _prioridade_rede, prioridade, _resultado, _dist_proxima,
-              ranking, setores, _setores_geo):
+              ranking, setores, _setores_geo, lista_equipamentos):
         f.cache_clear()          # lru_cache não remove por chave; limpar tudo é barato
     contexto.esquecer(cod)
 

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Equipamentos · Equicidade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <meta name="theme-color" content="#0D1450">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="vendor/maplibre-gl-4.7.1/maplibre-gl.css" rel="stylesheet">
+  <link href="css/app.css" rel="stylesheet">
+  <link href="css/equipamentos.css" rel="stylesheet">
+</head>
+<body class="eq-pagina">
+  <header class="topo">
+    <a class="marca" href="/" aria-label="Equicidade – voltar ao mapa">
+      <img class="logo" src="img/equicidade-horizontal.svg" alt="Equicidade" width="141" height="32"><span class="marca-sub">Equipamentos</span>
+    </a>
+    <label class="seletor">
+      <span class="seletor-rot">Município</span>
+      <select id="municipio"></select>
+    </label>
+    <div class="acoes">
+      <a class="btn sec" href="/">Voltar ao mapa</a>
+    </div>
+  </header>
+
+  <main class="eq-corpo">
+    <div class="eq-cabeca">
+      <div>
+        <p class="eyebrow">Cadastro de equipamentos</p>
+        <h1>Confira as unidades e a capacidade de cada uma</h1>
+        <p class="eq-intro">A lista vem do Censo Escolar (INEP) e do cadastro de saúde (CNES). Corrija endereço, local e capacidade,
+          inclua unidades que abriram depois do censo e marque as que fecharam. O mapa e o relatório passam a usar os números novos.</p>
+      </div>
+    </div>
+
+    <p class="nota destaque" id="aviso-consulta" hidden>Seu acesso a este município é de consulta: dá para conferir a lista, mas só o gestor faz ajustes.</p>
+
+    <nav class="eq-abas" id="abas" role="tablist" aria-label="Tipo de equipamento"></nav>
+
+    <section class="eq-painel" id="painel" role="tabpanel" aria-live="polite">
+      <div class="eq-barra">
+        <label class="eq-busca">
+          <span class="vis-oculto">Buscar</span>
+          <input type="search" id="busca" placeholder="Buscar por nome, endereço, bairro ou código">
+        </label>
+        <select id="filtro" class="campo eq-filtro" aria-label="Filtrar">
+          <option value="todas">Todas as unidades</option>
+          <option value="ajustadas">Com ajuste da prefeitura</option>
+          <option value="novas">Incluídas pela prefeitura</option>
+          <option value="excluidas">Fora de funcionamento</option>
+          <option value="sem_local">Sem local no mapa</option>
+        </select>
+        <button type="button" class="btn ico-mais" id="btn-incluir" hidden>Incluir unidade</button>
+      </div>
+      <div class="eq-resumo" id="resumo"></div>
+      <div class="tabela-rolagem">
+        <table class="tabela eq-tabela">
+          <thead>
+            <tr><th>Unidade</th><th>Endereço</th><th class="num" id="th-cap">Capacidade</th><th><span class="vis-oculto">Ações</span></th></tr>
+          </thead>
+          <tbody id="linhas"></tbody>
+        </table>
+      </div>
+      <p class="nota" id="vazio" hidden>Nenhuma unidade com esse filtro.</p>
+      <p class="nota eq-fonte" id="fonte"></p>
+    </section>
+  </main>
+
+  <dialog id="dlg-unidade" class="eq-dlg">
+    <form class="dlg" id="form-unidade">
+      <h2 id="dlg-titulo">Editar unidade</h2>
+      <p class="nota" id="dlg-sub"></p>
+      <div class="eq-dlg-grade">
+        <div class="eq-dlg-campos">
+          <label class="campo-rot">Nome<input type="text" id="f-nome" maxlength="160" required></label>
+          <label class="campo-rot">Endereço<input type="text" id="f-endereco" maxlength="240" placeholder="Rua, número – bairro"></label>
+          <label class="campo-rot" id="rot-rede">Rede
+            <select id="f-rede"><option>Municipal</option><option>Estadual</option><option>Federal</option></select></label>
+          <label class="campo-rot" id="rot-equipes">Equipes de atenção básica (eSF e eAP)
+            <input type="number" id="f-equipes" min="0" max="60" step="1" inputmode="numeric"></label>
+          <label class="campo-rot"><span id="rot-cap">Capacidade</span>
+            <input type="number" id="f-cap" min="0" max="1000000" step="1" inputmode="numeric"></label>
+          <p class="nota" id="ajuda-cap"></p>
+        </div>
+        <div class="eq-dlg-mapa">
+          <div class="eq-mini" id="mini" role="application" aria-label="Mapa para marcar o local da unidade"></div>
+          <p class="nota" id="ajuda-local">Clique no mapa ou arraste o marcador para corrigir o local.</p>
+          <button type="button" class="btn sec btn-peq" id="btn-local-oficial" hidden>Voltar ao local oficial</button>
+        </div>
+      </div>
+      <p class="nota aviso" id="dlg-erro" hidden></p>
+      <div class="dlg-acoes">
+        <button type="button" class="btn sec" id="btn-dlg-cancelar">Cancelar</button>
+        <button type="submit" class="btn" id="btn-dlg-salvar">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-confirmar">
+    <form class="dlg" method="dialog">
+      <h2 id="conf-titulo"></h2>
+      <p id="conf-texto"></p>
+      <div class="dlg-acoes">
+        <button value="nao" class="btn sec">Cancelar</button>
+        <button value="sim" class="btn" id="conf-sim">Confirmar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="eq-toast" id="toast" role="status" hidden></div>
+
+  <script src="vendor/maplibre-gl-4.7.1/maplibre-gl.js"></script>
+  <script src="js/equipamentos.js"></script>
+</body>
+</html>

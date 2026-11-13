@@ -40,6 +40,7 @@ from ..acesso.web import (CabecalhosSeguranca, LimiteTaxa, ProtecaoCSRF, gerir_m
 from ..analise.contexto import MunicipioNaoProcessado
 from ..config import RAIZ, municipio, municipios
 from . import propostas
+from .ajustes import rotas as rotas_ajustes
 from .visoes import rotas as rotas_visoes
 
 FRONT = RAIZ / "frontend"
@@ -73,6 +74,7 @@ app.add_middleware(CabecalhosSeguranca)
 app.include_router(rotas_auth)
 app.include_router(rotas_admin)
 app.include_router(rotas_visoes)
+app.include_router(rotas_ajustes)
 app.include_router(propostas.admin)
 app.include_router(propostas.publico)
 
@@ -366,6 +368,11 @@ def pagina_entrar(u: Usuario | None = Depends(usuario_opcional)):
 @app.get("/definir-senha", include_in_schema=False)
 def pagina_definir_senha():
     return _pagina("definir-senha.html")
+
+
+@app.get("/equipamentos", include_in_schema=False)
+def pagina_equipamentos(u: Usuario | None = Depends(usuario_opcional)):
+    return _pagina("equipamentos.html") if u else RedirectResponse("/entrar", status_code=303)
 
 
 @app.get("/admin", include_in_schema=False)

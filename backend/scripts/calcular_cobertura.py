@@ -24,6 +24,7 @@ import pandas as pd  # noqa: E402
 from scipy.spatial import cKDTree  # noqa: E402
 from shapely.geometry import Polygon  # noqa: E402
 
+from backend.app.analise import ajustes  # noqa: E402
 from backend.app.analise import cobertura as cob  # noqa: E402
 from backend.app.config import CRS_GEO, municipio_cli  # noqa: E402
 from backend.app.ingestao import inep  # noqa: E402
@@ -47,6 +48,7 @@ def main() -> int:
     enderecos = gpd.read_parquet(m.processados / "enderecos.parquet")
     escolas = gpd.read_parquet(m.processados / "escolas.parquet")
     ubs = gpd.read_parquet(m.processados / "ubs.parquet")
+    escolas, ubs = ajustes.aplicar(escolas, ubs, ajustes.ler(m), eqs)      # correções da prefeitura
     limite = gpd.read_parquet(m.processados / "limite.parquet")
 
     # ---------------- 1. Demanda ----------------
