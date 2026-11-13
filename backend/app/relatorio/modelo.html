@@ -3,43 +3,46 @@
 <head>
 <meta charset="utf-8">
 <title>Cobertura de equipamentos públicos – {{ m.nome }}/{{ m.uf }}</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
   @page { size: A4; }
   * { box-sizing: border-box; }
-  body { font-family: Inter, Arial, sans-serif; color: #1d2733; font-size: 10pt; line-height: 1.45; margin: 0; }
-  h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 4px; color: #0f6b6b; }
-  h2 { font-size: 14pt; margin: 0 0 8px; color: #0f6b6b; }
+  body { font-family: 'Instrument Sans', Arial, sans-serif; color: #0D1450; font-size: 10pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 4px; color: #0D1450; letter-spacing: -.02em; }
+  h2 { font-size: 14pt; margin: 0 0 8px; color: #2F4BFF; }
   h3 { font-size: 11pt; margin: 14px 0 6px; }
   p { margin: 0 0 8px; }
   .pagina { page-break-after: always; }
   .pagina:last-child { page-break-after: auto; }
-  .sub { color: #5b6876; }
-  .capa-topo { border-bottom: 3px solid #0f6b6b; padding-bottom: 10px; margin-bottom: 14px; }
+  .sub { color: #4A5072; }
+  .capa-topo { border-bottom: 3px solid #2F4BFF; padding-bottom: 10px; margin-bottom: 14px; }
+  .capa-marca { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .capa-marca svg { height: 9mm; width: auto; display: block; }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 14px; }
-  .kpi { border: 1px solid #e3e7eb; border-radius: 8px; padding: 8px 10px; }
-  .kpi .r { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .04em; color: #5b6876; }
-  .kpi .v { font-size: 15pt; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .kpi { border: 1px solid #D5D9EA; border-radius: 8px; padding: 8px 10px; }
+  .kpi .r { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .04em; color: #4A5072; }
+  .kpi .v { font-family: 'IBM Plex Mono', monospace; font-size: 14pt; font-weight: 600; font-variant-numeric: tabular-nums; }
   .barras { margin: 6px 0 12px; }
   .barra { display: grid; grid-template-columns: 300px 1fr 48px; gap: 8px; align-items: center; margin: 3px 0; }
   .mapa.resumo { max-height: {{ '72mm' if comp else '100mm' }}; object-fit: contain; }
   table.comp { font-size: 8.4pt; margin-top: 2px; }
   table.comp td, table.comp th { padding: 2.5px 6px; }
-  .barra .t { height: 10px; background: #edf0f2; border-radius: 5px; overflow: hidden; }
+  .barra .t { height: 10px; background: #EEF1FF; border-radius: 5px; overflow: hidden; }
   .barra .c { height: 100%; border-radius: 5px; }
-  .barra b { text-align: right; font-variant-numeric: tabular-nums; }
+  .barra b { text-align: right; font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
   .ponto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
   ul.achados { padding-left: 18px; margin: 4px 0 10px; }
   ul.achados li { margin-bottom: 5px; }
-  .mapa { width: 100%; border: 1px solid #e3e7eb; border-radius: 6px; display: block; max-height: 128mm; object-fit: contain; }
-  .legenda { font-size: 8pt; color: #5b6876; margin-top: 4px; }
+  .mapa { width: 100%; border: 1px solid #D5D9EA; border-radius: 6px; display: block; max-height: 128mm; object-fit: contain; }
+  .legenda { font-size: 8pt; color: #4A5072; margin-top: 4px; }
   table { width: 100%; border-collapse: collapse; font-size: 8.8pt; margin: 6px 0 10px; }
-  th, td { padding: 4px 6px; border-bottom: 1px solid #e3e7eb; text-align: left; vertical-align: top; }
-  th { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .03em; color: #5b6876; font-weight: 600; }
+  th, td { padding: 4px 6px; border-bottom: 1px solid #D5D9EA; text-align: left; vertical-align: top; }
+  th { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .03em; color: #4A5072; font-weight: 600; }
   td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.n { font-family: 'IBM Plex Mono', monospace; font-size: 8.4pt; }
   .faixa-tipo { border-left: 6px solid var(--cor); padding-left: 10px; margin-bottom: 8px; }
   .faixa-tipo h2 { color: var(--cor); }
-  .nota { font-size: 8pt; color: #5b6876; }
+  .nota { font-size: 8pt; color: #4A5072; }
   .duas { columns: 2; column-gap: 18px; font-size: 8.6pt; }
   .duas li { break-inside: avoid; }
 </style>
@@ -49,6 +52,7 @@
 <!-- ============ Página 1: resumo ============ -->
 <section class="pagina">
   <div class="capa-topo">
+    <div class="capa-marca">{{ logo }}<span class="sub">equicidade.com.br</span></div>
     <div class="sub">Diagnóstico de cobertura de equipamentos públicos municipais</div>
     <h1>{{ m.nome }} – {{ m.uf }}</h1>
     <div class="sub">{{ data }} · Distância {{ 'a pé pelas ruas (OpenStreetMap)' if modo == 'rede' else 'em linha reta' }} · Fontes: IBGE (Censo 2022, CNEFE), INEP (Censo Escolar 2024), CNES/DATASUS</div>

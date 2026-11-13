@@ -18,6 +18,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from markupsafe import Markup
 
 from ..analise import cobertura as cob
 from ..analise.contexto import Base, base
@@ -25,6 +26,11 @@ from ..estilo import ESTILO, UNIDADE
 from ..ingestao import inep
 
 AQUI = Path(__file__).parent
+# Escalas da marca Equicidade (marca/tokens.json): déficit em coral, como no mapa da tela
+from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
+CMAP_DEFICIT = LinearSegmentedColormap.from_list("equicidade_deficit", ["#FFE9E5", "#FFB3A8", "#FF6B57", "#C93A27"])
+CMAP_PRIORIDADE = LinearSegmentedColormap.from_list("equicidade_prioridade", ["#FFF1EE", "#FFB3A8", "#FF6B57", "#8E2A1C"])
+LOGO = AQUI.parents[2] / "frontend" / "img" / "equicidade-horizontal.svg"
 WEB = "EPSG:3857"
 PRECISAS = {"inep_catalogo", "cnes", "cnefe_nome_no_cep"}
 MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto",
@@ -155,7 +161,7 @@ def mapa_tipo(b: Base, d: dict, hexa: gpd.GeoDataFrame, modo: str = "reta") -> s
     h = h[h["deficit"] > 0.5].to_crs(WEB)
     _extensao(ax, b, d["sug"].geometry if len(d["sug"]) else None)
     if len(h):
-        h.plot(ax=ax, column="deficit", cmap="Reds", alpha=0.55, linewidth=0, zorder=2,
+        h.plot(ax=ax, column="deficit", cmap=CMAP_DEFICIT, alpha=0.55, linewidth=0, zorder=2,
                vmin=0, vmax=max(h["deficit"].quantile(0.97), 1))
     fac = d["fac"]
     if len(fac):
@@ -175,7 +181,7 @@ def mapa_tipo(b: Base, d: dict, hexa: gpd.GeoDataFrame, modo: str = "reta") -> s
         prec = f["fonte_coord"].isin(PRECISAS)
         f[prec].plot(ax=ax, color=cor, markersize=34, edgecolor="white", linewidth=1, zorder=5)
         if (~prec).any():
-            f[~prec].plot(ax=ax, color=cor, markersize=34, edgecolor="#d62828", linewidth=1.2, zorder=5)
+            f[~prec].plot(ax=ax, color=cor, markersize=34, edgecolor="#C93A27", linewidth=1.2, zorder=5)
     for s in (d["sug"].to_crs(WEB).itertuples() if len(d["sug"]) else []):
         _radar(ax, s.geometry.x, s.geometry.y, cor, str(s.ordem))
     _fundo(ax)
@@ -191,7 +197,7 @@ def mapa_prioridade(b: Base, an: dict) -> str:
     fig, ax = plt.subplots(figsize=(8, 4.6))
     h = an["hex"][an["hex"]["prioridade_geral"] > 1].to_crs(WEB)
     _extensao(ax, b, proporcao=16 / 9)
-    h.plot(ax=ax, column="prioridade_geral", cmap="magma_r", alpha=0.6, linewidth=0, zorder=2, legend=True,
+    h.plot(ax=ax, column="prioridade_geral", cmap=CMAP_PRIORIDADE, alpha=0.6, linewidth=0, zorder=2, legend=True,
            legend_kwds={"shrink": 0.55, "label": "Índice de prioridade (0–100)"})
     for d in an["tipos"].values():
         if len(d["sug"]):
@@ -313,6 +319,7 @@ def montar_html(b: Base, raios: dict[str, int] | None = None, modo: str = "reta"
     env = Environment(loader=FileSystemLoader(AQUI), autoescape=select_autoescape(["html"]))
     env.filters["n"] = fmt
     return env.get_template("modelo.html").render(
+        logo=Markup(LOGO.read_text(encoding="utf-8")) if LOGO.exists() else "Equicidade",
         m=m, data=f"{hoje.day} de {MESES[hoje.month - 1]} de {hoje.year}", P=P, fr=b.fr,
         pop=int(b.setores["pop_total"].sum()), n_setores=len(b.setores), tipos=tipos,
         mapa_prioridade=mapa_prioridade(b, an), achados=achados(an, mat) + achado_rede(comp, modo), pendencias=pendencias(b),
@@ -339,8 +346,8 @@ def gerar_pdf(cod: str, destino: Path | None = None, raios: dict[str, int] | Non
     sufixo = "_a_pe" if modo == "rede" else ""
     destino = destino or b.m.saidas / f"relatorio_{nome_arquivo(m['nome'])}_{date.today():%Y%m%d}{sufixo}.pdf"
     destino.parent.mkdir(parents=True, exist_ok=True)
-    rodape = (f'<div style="font:8px Inter,Arial,sans-serif;color:#6b7785;width:100%;padding:0 14mm;'
-              f'display:flex;justify-content:space-between"><span>Mapa de Equipamentos Públicos – {m["nome"]}/{m["uf"]}</span>'
+    rodape = (f'<div style="font:8px &quot;Instrument Sans&quot;,Arial,sans-serif;color:#4A5072;width:100%;padding:0 14mm;'
+              f'display:flex;justify-content:space-between"><span>Equicidade · {m["nome"]}/{m["uf"]}</span>'
               '<span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span></div>')
     with sync_playwright() as p:
         # /dev/shm do Docker tem 64 MB: com mapas grandes o Chromium cai sem esta opção

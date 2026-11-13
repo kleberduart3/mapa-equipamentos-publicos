@@ -76,5 +76,14 @@ A landing descreve recursos que ainda não existem.
 
 **Antes de divulgar a landing:** implemente os dois itens ❌ ou tire-os do texto.
 
-**Identidade na ferramenta:** o mapa, o login, o painel e o relatório PDF ainda usam o visual antigo (verde-petróleo
-#0f6b6b e Inter). Aplicar a marca Equicidade neles é o próximo passo natural.
+**Identidade na ferramenta (aplicada em 13/11/2026).** Mapa, login, definir senha, painel de contas e relatório PDF
+já seguem a marca Equicidade:
+- logo e favicon (`frontend/img/`);
+- azul-500 nos botões e controles, azul-900 no texto e névoa no fundo;
+- Instrument Sans no texto e IBM Plex Mono nos números;
+- déficit e prioridade em escala de coral (no mapa e no PDF);
+- alertas em coral-700, como pede o manual.
+
+As cores de cada **tipo de equipamento** (creche laranja, pré-escola amarelo, anos iniciais azul, anos finais roxo,
+UBS verde) foram mantidas: o manual não define uma paleta categórica, e são elas que diferenciam os cinco tipos no
+mapa. Se quiser, dá para criar uma paleta categórica da marca.

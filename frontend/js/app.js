@@ -71,7 +71,7 @@ const GLIFO = {
 };
 
 function svgPin(cor, icone, aprox) {
-  const anel = aprox ? '<circle cx="13" cy="12.5" r="12" fill="none" stroke="#d62828" stroke-width="1.6" stroke-dasharray="3 2.2"/>' : "";
+  const anel = aprox ? '<circle cx="13" cy="12.5" r="12" fill="none" stroke="#C93A27" stroke-width="1.6" stroke-dasharray="3 2.2"/>' : "";
   return `<svg viewBox="-1 -1 28 36" width="28" height="36" aria-hidden="true">
     <path d="M13 34S2 21.2 2 12.6a11 11 0 0 1 22 0C24 21.2 13 34 13 34Z" fill="${cor}" stroke="#fff" stroke-width="1.5"/>
     <g fill="#fff" transform="translate(1 0.6)">${GLIFO[icone] || GLIFO.ponto}</g>${anel}</svg>`;
@@ -187,14 +187,14 @@ async function carregarMunicipio(cod) {
 
   aoCarregar(() => {
     fonte("limite", limite);
-    camada({ id: "limite-linha", type: "line", source: "limite", paint: { "line-color": "#0f6b6b", "line-width": 2, "line-dasharray": [3, 2] } });
+    camada({ id: "limite-linha", type: "line", source: "limite", paint: { "line-color": "#0D1450", "line-width": 2, "line-dasharray": [3, 2] } });
     fonte("deficit", vazio());
     camada({ id: "deficit", type: "fill", source: "deficit", paint: {
-      "fill-color": ["interpolate", ["linear"], ["get", "deficit"], 0, "#fde8e6", 20, "#f19c92", 80, "#c0392b", 300, "#7d1a12"],
+      "fill-color": ["interpolate", ["linear"], ["get", "deficit"], 0, "#FFE9E5", 20, "#FFB3A8", 80, "#FF6B57", 300, "#C93A27"],
       "fill-opacity": 0.55 } });
     fonte("prioridade", vazio());
     camada({ id: "prioridade", type: "fill", source: "prioridade", layout: { visibility: "none" }, paint: {
-      "fill-color": ["interpolate", ["linear"], ["get", "prioridade_geral"], 1, "#fff3c4", 10, "#f8a35b", 25, "#d1495b", 45, "#3d0d4f"],
+      "fill-color": ["interpolate", ["linear"], ["get", "prioridade_geral"], 1, "#FFF1EE", 10, "#FFB3A8", 25, "#FF6B57", 45, "#8E2A1C"],
       "fill-opacity": 0.6 } });
     tipos.forEach((t) => {
       const cor = st.cfg.tipos[t].cor;
@@ -474,9 +474,9 @@ function atualizarLegenda() {
         <circle cx="11" cy="11" r="6.6" fill="none" stroke="${c.cor}" stroke-opacity=".5"/><circle cx="11" cy="11" r="3.3" fill="none" stroke="${c.cor}" stroke-opacity=".3"/></svg>
       <span>${esc(c.rotulo.split(" (")[0])} – <b>${fmt(st.raio[t])} m</b></span></div>`).join("");
   $("#legenda").innerHTML = `<h3>Equipamentos e raios ${APE() ? "(a pé)" : ""}</h3>${itens}
-    <div class="leg-item"><span class="radar" style="--cor:#c0392b;width:18px;height:18px"><span class="nucleo"></span></span><span>Área prioritária (radar)</span></div>
+    <div class="leg-item"><span class="radar" style="--cor:#FF6B57;width:18px;height:18px"><span class="nucleo"></span></span><span>Área prioritária (radar)</span></div>
     <div class="leg-item"><span class="leg-hex"></span><span>Demanda não resolvida</span></div>
-    <div class="leg-item"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#d62828" stroke-width="1.6" stroke-dasharray="3 2.2"/></svg><span>Localização a confirmar</span></div>
+    <div class="leg-item"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#C93A27" stroke-width="1.6" stroke-dasharray="3 2.2"/></svg><span>Localização a confirmar</span></div>
     <div class="nota">${APE() ? "Mancha: alcance a pé pelas ruas. " : ""}Zona rural: raio × ${fmt(st.cfg.fator_raio_rural, 1)}</div>`;
 }
 
