@@ -45,10 +45,32 @@ class Configuracao(BaseSettings):
 
     aquecer_ao_iniciar: bool = True                    # pré-carrega os municípios configurados
 
+    # Mapa de fundo (mosaicos raster {z}/{x}/{y}). O tile.openstreetmap.org serve para
+    # desenvolvimento; em produção use um provedor contratado (MapTiler, Stadia…), com a chave na URL.
+    mosaicos_url: str = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    mosaicos_atribuicao: str = "© OpenStreetMap contributors"
+    mosaicos_zoom_max: int = 19
+
     @field_validator("url_base")
     @classmethod
     def _sem_barra(cls, v: str) -> str:
         return v.rstrip("/")
+
+    @field_validator("mosaicos_url")
+    @classmethod
+    def _mosaicos(cls, v: str) -> str:
+        if not v.startswith("https://") or not all(k in v for k in ("{z}", "{x}", "{y}")) or "{s}" in v:
+            raise ValueError("MAPA_MOSAICOS_URL precisa ser https://, conter {z}, {x} e {y} e não usar {s}")
+        return v
+
+    @property
+    def mosaicos_origem(self) -> str:
+        """Origem (https://host) dos mosaicos, para a política de segurança (CSP)."""
+        from urllib.parse import urlsplit
+        return f"https://{urlsplit(self.mosaicos_url).netloc}"
+
+    def mapa_base(self) -> dict:
+        return {"url": self.mosaicos_url, "atribuicao": self.mosaicos_atribuicao, "zoom_max": self.mosaicos_zoom_max}
 
     @property
     def producao(self) -> bool:

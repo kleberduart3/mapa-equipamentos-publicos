@@ -119,8 +119,9 @@ Copie `/srv/backup` para fora do servidor, por exemplo com o rclone para um buck
 - [x] **Versão pública desativada** (13/11/2026): GitHub Pages desligado; `site/` e o HTML único saíram do
       repositório e não são mais versionados. Eles continuam no histórico do git: para apagar de vez, torne o
       repositório privado.
-- [ ] **Mosaicos do mapa.** Contrate um provedor (MapTiler, Stadia…) e troque a URL dos mosaicos em
-      `frontend/js/app.js` e no CSP (`backend/app/acesso/web.py`). O tile.openstreetmap.org não é para produção.
+- [ ] **Mosaicos do mapa.** Contrate um provedor (MapTiler, Stadia…) e preencha `MAPA_MOSAICOS_URL` e
+      `MAPA_MOSAICOS_ATRIBUICAO` no `.env`; o mapa, o relatório e a política de segurança passam a usá-lo.
+      O tile.openstreetmap.org não é para produção.
 - [ ] **E-mail.** Configure o SMTP no `.env` para convites e "esqueci a senha".
 - [ ] **Termo de uso e LGPD.** O sistema guarda nome, e-mail, IP e registro de atividade de cada usuário, e os dados
       que as prefeituras enviarem. Defina o responsável (controlador) e o prazo de guarda.

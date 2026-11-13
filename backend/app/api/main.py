@@ -115,7 +115,7 @@ def listar_municipios(u: Usuario | None = Depends(usuario_opcional)):
 
 @app.get("/api/{cod}/config")
 def config(cod: str, acesso=Depends(ver_municipio)):
-    return {**servicos.config(cod), "papel": acesso[1]}
+    return {**servicos.config(cod), "papel": acesso[1], "mapa_base": cfg().mapa_base()}
 
 
 @app.get("/api/{cod}/limite")

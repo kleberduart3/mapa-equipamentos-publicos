@@ -233,3 +233,21 @@ def test_upload_gestor_valida_arquivos(app):
     assert app.post("/api/2700300/upload-iptu", headers=CSRF, files={"outro": ("a.csv", b"1")}).status_code == 400
     muitos = [("arquivos", (f"a{i}.csv", b"1")) for i in range(11)]
     assert app.post("/api/2700300/upload-iptu", headers=CSRF, files=muitos).status_code == 400
+
+
+def test_mosaicos_configuraveis(monkeypatch):
+    monkeypatch.setenv("MAPA_MOSAICOS_URL", "https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=abc")
+    c = configuracao.Configuracao()
+    assert c.mosaicos_origem == "https://api.maptiler.com"
+    for ruim in ("http://x.com/{z}/{x}/{y}.png", "https://x.com/tiles.png", "https://{s}.x.com/{z}/{x}/{y}.png"):
+        monkeypatch.setenv("MAPA_MOSAICOS_URL", ruim)
+        with pytest.raises(ValueError):
+            configuracao.Configuracao()
+
+
+def test_csp_segue_o_provedor(app, monkeypatch):
+    monkeypatch.setenv("MAPA_MOSAICOS_URL", "https://tiles.exemplo.com/{z}/{x}/{y}.png")
+    configuracao.cfg.cache_clear()
+    csp = app.get("/entrar").headers["content-security-policy"]
+    assert "img-src 'self' data: blob: https://tiles.exemplo.com" in csp
+    assert "tile.openstreetmap.org" not in csp

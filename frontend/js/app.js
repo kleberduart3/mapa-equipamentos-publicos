@@ -213,12 +213,15 @@ async function carregarMunicipio(cod) {
 }
 
 function criarMapa() {
+  // Mapa de fundo: o servidor informa o provedor (MAPA_MOSAICOS_URL); sem servidor, OpenStreetMap.
+  const base = st.cfg?.mapa_base || { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    atribuicao: "© OpenStreetMap contributors", zoom_max: 19 };
   st.map = new maplibregl.Map({
     container: "mapa",
     style: {
       version: 8,
-      sources: { osm: { type: "raster", tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize: 256, maxzoom: 19,
-        attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>' } },
+      sources: { osm: { type: "raster", tiles: [base.url], tileSize: 256, maxzoom: base.zoom_max,
+        attribution: `${esc(base.atribuicao)} · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">dados OpenStreetMap</a>` } },
       layers: [{ id: "osm", type: "raster", source: "osm" }],
     },
     center: [-36.66, -9.75], zoom: 12, attributionControl: { compact: false },

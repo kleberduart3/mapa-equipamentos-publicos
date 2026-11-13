@@ -134,27 +134,29 @@ def _origem(url: str) -> str:
 
 
 # ------------------------------- cabeçalhos -------------------------------- #
-CSP = "; ".join([
-    "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",   # estilos inline do MapLibre e dos popups
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://tile.openstreetmap.org",
-    "connect-src 'self' https://tile.openstreetmap.org",
-    "worker-src 'self' blob:",
-    "child-src blob:",
-    "frame-ancestors 'none'",
-    "base-uri 'none'",
-    "form-action 'self'",
-    "object-src 'none'",
-])
+def csp() -> str:
+    mos = cfg().mosaicos_origem                     # provedor do mapa de fundo (MAPA_MOSAICOS_URL)
+    return "; ".join([
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",   # estilos inline do MapLibre e dos popups
+        "font-src 'self' https://fonts.gstatic.com",
+        f"img-src 'self' data: blob: {mos}",
+        f"connect-src 'self' {mos}",
+        "worker-src 'self' blob:",
+        "child-src blob:",
+        "frame-ancestors 'none'",
+        "base-uri 'none'",
+        "form-action 'self'",
+        "object-src 'none'",
+    ])
 
 
 class CabecalhosSeguranca(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         r = await call_next(request)
         h = r.headers
-        h.setdefault("Content-Security-Policy", CSP)
+        h.setdefault("Content-Security-Policy", csp())
         h.setdefault("X-Content-Type-Options", "nosniff")
         h.setdefault("X-Frame-Options", "DENY")
         h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")   # o OSM pede Referer; vai só o domínio

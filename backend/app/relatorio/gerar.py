@@ -110,9 +110,11 @@ def _fundo(ax):
         pasta.mkdir(exist_ok=True)
         ctx.set_cache_dir(str(pasta))
         _CACHE_OK = True
+    from ..acesso.configuracao import cfg
     try:
-        ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik, crs=WEB, attribution_size=6,
-                        attribution="© OpenStreetMap contributors", headers=CABECALHO_OSM)
+        # mesmo provedor de mosaicos do mapa da tela (MAPA_MOSAICOS_URL)
+        ctx.add_basemap(ax, source=cfg().mosaicos_url, crs=WEB, attribution_size=6,
+                        attribution=cfg().mosaicos_atribuicao, headers=CABECALHO_OSM)
     except Exception:  # noqa: BLE001 – sem internet o mapa sai sem fundo
         ax.set_facecolor("#f2f2ee")
 

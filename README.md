@@ -38,6 +38,7 @@ mapa onde há gente sem atendimento. Municípios processados: **Arapiraca/AL** (
 > Os mosaicos de tile.openstreetmap.org servem para desenvolvimento e demonstração. Para uso em produção
 > com várias prefeituras, a [política de uso do OSM](https://operations.osmfoundation.org/policies/tiles/)
 > pede um provedor de mosaicos próprio ou contratado (ex.: MapTiler, Stadia, Thunderforest).
+> Basta preencher `MAPA_MOSAICOS_URL` no `.env`.
 
 ## Incluir um município
 
