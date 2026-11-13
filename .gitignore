@@ -1,0 +1,17 @@
+# Dados (grandes; não versionar)
+dados/brutos/**
+!dados/brutos/*/
+!dados/brutos/inep/*.tsv
+dados/processados/**
+dados/saidas/**
+!dados/**/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+.env
+
+# Malha OSM baixada (refazer com preparar_rede.py)
+dados/brutos/osm/

@@ -1,0 +1,117 @@
+# =============================================================================
+# Parâmetros da análise de cobertura de equipamentos públicos
+# -----------------------------------------------------------------------------
+# TODOS os valores abaixo são PADRÕES INICIAIS "A REVISAR" pelo urbanista.
+# Eles seguem ordens de grandeza usuais em manuais de planejamento urbano e
+# na literatura de equipamentos comunitários, mas NÃO foram conferidos contra
+# uma norma específica. Antes de usar em processo oficial, confirme a fonte
+# (ex.: legislação municipal, plano diretor, manuais do MEC/MS, bibliografia
+# de equipamentos urbanos) e registre-a no campo "fonte".
+#
+# Depois de editar, rode:  python backend/scripts/calcular_cobertura.py
+# =============================================================================
+
+municipio:
+  nome: Arapiraca
+  uf: AL
+  codigo_ibge: "2700300"        # conferido na Etapa 2
+  crs_metrico: "EPSG:31984"     # SIRGAS 2000 / UTM zona 24S (cálculos em metros)
+
+# Multiplica o raio para moradores de setores RURAIS do IBGE.
+# Alavanca forte: 3.0 triplica o raio na zona rural (ex.: creche 500 m → 1,5 km).
+fator_raio_rural: 3.0           # a revisar
+
+# Como medir a distância até o equipamento:
+#   reta  linha reta (raio simples)
+#   rede  a pé pelas ruas do OpenStreetMap (fase 2; exige backend/scripts/preparar_rede.py)
+# O mapa e o relatório permitem trocar; este é o modo que abre por padrão.
+distancia_padrao: rede          # decisão de 12/11/2026: abrir a pé
+
+# Campos de cada equipamento:
+#   raio_m         raio de atendimento (zona urbana)
+#   faixa_demanda  coluna de população usada como demanda (ver setores.parquet)
+#   oferta         coluna booleana que indica se a escola oferece a etapa
+#   capacidade     coluna de capacidade instalada (matrículas ou equipes)
+#   redes          redes cuja oferta conta como atendimento
+#   taxa_atendimento_meta  fração da faixa etária que deve ser atendida
+equipamentos:
+  creche:
+    rotulo: "Creche (0–3 anos)"
+    fonte_dados: inep
+    raio_m: 500                 # a revisar
+    faixa_demanda: pop_0_3
+    oferta: oferta_creche
+    capacidade: mat_creche      # proxy; trocar por vagas se a prefeitura informar
+    redes: [Municipal]
+    taxa_atendimento_meta: 0.50 # a revisar (meta 1 do PNE: 50% de 0–3 anos)
+    fonte: "a definir"
+
+  pre_escola:
+    rotulo: "Pré-escola (4–5 anos)"
+    fonte_dados: inep
+    raio_m: 500                 # a revisar
+    faixa_demanda: pop_4_5
+    oferta: oferta_pre_escola
+    capacidade: mat_pre_escola
+    redes: [Municipal]
+    taxa_atendimento_meta: 1.00 # matrícula obrigatória
+    fonte: "a definir"
+
+  fundamental_iniciais:
+    rotulo: "Fundamental – anos iniciais (6–10 anos)"
+    fonte_dados: inep
+    raio_m: 1000                # a revisar
+    faixa_demanda: pop_6_10
+    oferta: oferta_fund_iniciais
+    capacidade: mat_fund_iniciais
+    redes: [Municipal]          # alternativa calculada também: [Municipal, Estadual, Federal]
+    taxa_atendimento_meta: 1.00
+    fonte: "a definir"
+
+  fundamental_finais:
+    rotulo: "Fundamental – anos finais (11–14 anos)"
+    fonte_dados: inep
+    raio_m: 1500                # a revisar
+    faixa_demanda: pop_11_14
+    oferta: oferta_fund_finais
+    capacidade: mat_fund_finais
+    redes: [Municipal, Estadual, Federal]   # decisão de 12/11/2026: conta toda a rede pública
+    taxa_atendimento_meta: 1.00
+    fonte: "a definir"
+
+  ubs:
+    rotulo: "Unidade Básica de Saúde"
+    fonte_dados: cnes
+    raio_m: 1000                # a revisar
+    faixa_demanda: pop_total
+    capacidade: equipes_ab
+    pessoas_por_equipe: 3500    # referência a revisar (capacidade = equipes × este valor)
+    taxa_atendimento_meta: 1.00
+    fonte: "a definir"
+
+# Variante "toda a rede pública" calculada para comparação nestes tipos
+# (anos finais já usa toda a rede pública; anos iniciais: o estado não tem matrícula em Arapiraca)
+variante_rede_publica: []
+
+# Camadas de contexto (aparecem no mapa, fora dos indicadores municipais)
+contexto:
+  ensino_medio_estadual:
+    rotulo: "Ensino Médio (rede estadual)"
+    oferta: oferta_medio
+    raio_m: 3000
+
+# Áreas prioritárias para novos equipamentos
+prioridade:
+  unidade_espacial: h3          # hexágonos H3
+  resolucao_h3: 9               # ~0,1 km² por hexágono (lado ~170 m)
+  pesos:                        # sem cadastro do IPTU, expansao_urbana sai e os demais são renormalizados
+    populacao_nao_atendida: 0.6
+    deficit_capacidade: 0.3
+    expansao_urbana: 0.1
+  sugestoes_por_tipo: 5         # nº máximo de locais sugeridos por tipo de equipamento
+  ganho_minimo:                 # demanda nova mínima atendida para valer sugerir um equipamento
+    creche: 60                  # crianças 0–3 já ponderadas pela meta
+    pre_escola: 60
+    fundamental_iniciais: 150
+    fundamental_finais: 150
+    ubs: 2000                   # pessoas

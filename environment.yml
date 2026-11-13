@@ -1,0 +1,32 @@
+name: equipamentos
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - geopandas>=1.0
+  - shapely>=2.0
+  - pyogrio
+  - pyproj
+  - pyarrow           # GeoParquet
+  - pandas
+  - h3-py
+  - pyyaml
+  - requests
+  - truststore        # certificados do Windows (servidor do INEP)
+  - openpyxl
+  - xlrd
+  - matplotlib
+  - mapclassify
+  - contextily
+  - fastapi
+  - uvicorn
+  - python-multipart  # upload de arquivos da prefeitura
+  - jinja2            # template HTML do relatório
+  - pytest
+  - jupyterlab
+  - osmnx             # fase 2: malha viária do OpenStreetMap (menor caminho: scipy)
+  - pip
+  - pip:
+      - playwright    # gera o PDF a partir de HTML (depois: playwright install chromium)
+      - datasus-dbc   # descompacta os .dbc do DATASUS (equipes do CNES)
+      - dbfread

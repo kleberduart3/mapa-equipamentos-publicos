@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mapa-equipamentos",
+      "runtimeExecutable": "C:\\Users\\Public\\miniforge3\\Scripts\\conda.exe",
+      "runtimeArgs": ["run", "-n", "equipamentos", "--no-capture-output", "uvicorn", "backend.app.api.main:app", "--port", "8000"],
+      "port": 8000
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Cobertura de equipamentos públicos – {{ m.nome }}/{{ m.uf }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, sans-serif; color: #1d2733; font-size: 10pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 4px; color: #0f6b6b; }
+  h2 { font-size: 14pt; margin: 0 0 8px; color: #0f6b6b; }
+  h3 { font-size: 11pt; margin: 14px 0 6px; }
+  p { margin: 0 0 8px; }
+  .pagina { page-break-after: always; }
+  .pagina:last-child { page-break-after: auto; }
+  .sub { color: #5b6876; }
+  .capa-topo { border-bottom: 3px solid #0f6b6b; padding-bottom: 10px; margin-bottom: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 14px; }
+  .kpi { border: 1px solid #e3e7eb; border-radius: 8px; padding: 8px 10px; }
+  .kpi .r { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .04em; color: #5b6876; }
+  .kpi .v { font-size: 15pt; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .barras { margin: 6px 0 12px; }
+  .barra { display: grid; grid-template-columns: 300px 1fr 48px; gap: 8px; align-items: center; margin: 3px 0; }
+  .mapa.resumo { max-height: {{ '72mm' if comp else '100mm' }}; object-fit: contain; }
+  table.comp { font-size: 8.4pt; margin-top: 2px; }
+  table.comp td, table.comp th { padding: 2.5px 6px; }
+  .barra .t { height: 10px; background: #edf0f2; border-radius: 5px; overflow: hidden; }
+  .barra .c { height: 100%; border-radius: 5px; }
+  .barra b { text-align: right; font-variant-numeric: tabular-nums; }
+  .ponto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  ul.achados { padding-left: 18px; margin: 4px 0 10px; }
+  ul.achados li { margin-bottom: 5px; }
+  .mapa { width: 100%; border: 1px solid #e3e7eb; border-radius: 6px; display: block; max-height: 128mm; object-fit: contain; }
+  .legenda { font-size: 8pt; color: #5b6876; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.8pt; margin: 6px 0 10px; }
+  th, td { padding: 4px 6px; border-bottom: 1px solid #e3e7eb; text-align: left; vertical-align: top; }
+  th { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .03em; color: #5b6876; font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .faixa-tipo { border-left: 6px solid var(--cor); padding-left: 10px; margin-bottom: 8px; }
+  .faixa-tipo h2 { color: var(--cor); }
+  .nota { font-size: 8pt; color: #5b6876; }
+  .duas { columns: 2; column-gap: 18px; font-size: 8.6pt; }
+  .duas li { break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<!-- ============ Página 1: resumo ============ -->
+<section class="pagina">
+  <div class="capa-topo">
+    <div class="sub">Diagnóstico de cobertura de equipamentos públicos municipais</div>
+    <h1>{{ m.nome }} – {{ m.uf }}</h1>
+    <div class="sub">{{ data }} · Distância {{ 'a pé pelas ruas (OpenStreetMap)' if modo == 'rede' else 'em linha reta' }} · Fontes: IBGE (Censo 2022, CNEFE), INEP (Censo Escolar 2024), CNES/DATASUS</div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="r">População</div><div class="v">{{ pop|n }}</div></div>
+    <div class="kpi"><div class="r">Setores censitários</div><div class="v">{{ n_setores|n }}</div></div>
+    {% for t in tipos if t.t in ('creche', 'ubs') %}
+    <div class="kpi"><div class="r">Sem {{ t.rotulo.split(' (')[0].lower() }} no raio</div><div class="v">{{ t.pop_desc|n }}</div></div>
+    {% endfor %}
+  </div>
+
+  {% if not comp %}
+  <h3>Parcela da população atendida pelo raio de cada equipamento</h3>
+  <div class="barras">
+    {% for t in tipos %}
+    <div class="barra"><span><span class="ponto" style="background:{{ t.cor }}"></span>{{ t.rotulo.split(' (')[0].replace('Unidade Básica de Saúde', 'UBS') }} · {{ t.cfg.raio_m|n }} m</span>
+      <span class="t"><span class="c" style="display:block;width:{{ t.pct }}%;background:{{ t.cor }}"></span></span><b>{{ t.pct|n }}%</b></div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <h3>Parcela da população atendida pelo raio de cada equipamento: linha reta × a pé pelas ruas</h3>
+  <table class="comp">
+    <tr><th>Equipamento</th><th class="n">Raio</th><th class="n">Linha reta</th><th class="n">A pé</th><th class="n">Rural: reta → a pé</th><th class="n">Fora do alcance a pé</th></tr>
+    {% for c in comp %}
+    <tr><td><span class="ponto" style="background:{{ c.cor }}"></span>{{ c.rotulo }}</td><td class="n">{{ c.raio|n }} m</td>
+      <td class="n">{% if modo != 'rede' %}<b>{{ c.reta|n }}%</b>{% else %}{{ c.reta|n }}%{% endif %}</td><td class="n">{% if modo == 'rede' %}<b>{{ c.rede|n }}%</b>{% else %}{{ c.rede|n }}%{% endif %}</td><td class="n">{{ c.reta_rur|n }}% → {{ c.rede_rur|n }}%</td>
+      <td class="n">{{ c.rede_desc|n }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  <h3>Principais achados</h3>
+  <ul class="achados">{% for a in achados %}<li>{{ a|safe }}</li>{% endfor %}</ul>
+
+  <h3>Onde agir primeiro</h3>
+  <img class="mapa resumo" src="{{ mapa_prioridade }}" alt="Mapa do índice de prioridade">
+  <p class="legenda">Hexágonos coloridos pelo índice de prioridade ({{ pesos }}). Radares: as três primeiras áreas
+    sugeridas para cada tipo de equipamento, na cor do tipo.</p>
+</section>
+
+<!-- ============ Uma página por tipo ============ -->
+{% for t in tipos %}
+<section class="pagina" style="--cor: {{ t.cor }}">
+  <div class="faixa-tipo">
+    <h2>{{ t.rotulo }}</h2>
+    <div class="sub">Raio de atendimento {{ t.cfg.raio_m|n }} m {{ 'a pé' if modo == 'rede' else 'em linha reta' }} (zona rural: {{ (t.cfg.raio_m * fr)|n }} m) ·
+      meta de atendimento {{ (100 * t.cfg.taxa_atendimento_meta)|n }}% · redes: {{ t.redes }}</div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="r">População da faixa</div><div class="v">{{ t.pop_faixa|n }}</div></div>
+    <div class="kpi"><div class="r">Coberta (urbana / rural)</div><div class="v">{{ t.pct_urb|n }}% / {{ t.pct_rur|n }}%</div></div>
+    <div class="kpi"><div class="r">Fora de qualquer raio</div><div class="v">{{ t.pop_desc|n }}</div></div>
+    <div class="kpi"><div class="r">Falta de capacidade no raio</div><div class="v">{{ t.def_cap|n }}</div></div>
+  </div>
+
+  <img class="mapa" src="{{ t.mapa }}" alt="Mapa de cobertura – {{ t.rotulo }}">
+  <p class="legenda">Pontos: {{ t.n_fac }} equipamentos (contorno vermelho = localização a confirmar). {% if modo == 'rede' %}Manchas: área alcançável
+    a pé pelas ruas dentro do raio, na cor do tipo.{% else %}Círculos: raio de
+    atendimento na cor do tipo.{% endif %} Vermelho: demanda não resolvida (fora do raio ou sem capacidade). Radar numerado: áreas
+    sugeridas para novos equipamentos, em ordem.</p>
+
+  {% if t.sug %}
+  <h3>Áreas sugeridas para novo equipamento</h3>
+  <table>
+    <tr><th class="n">Ordem</th><th>Bairro / localidade</th><th class="n">Demanda que absorveria</th><th class="n">Hoje sem nenhum equipamento no raio</th></tr>
+    {% for s in t.sug %}
+    <tr><td class="n">{{ s.ordem }}</td><td>{{ s.bairro }}</td><td class="n">{{ s.demanda_absorvida|n }} {{ t.unidade }}</td>
+      <td class="n">{{ s.demanda_sem_cobertura_absorvida|n }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="nota">Cada área é um hexágono de ~0,1 km² escolhido em sequência: é o que alcança, com o raio do tipo, a maior demanda
+    ainda não resolvida. Indica onde estudar terrenos, não um endereço definitivo.</p>
+  {% else %}
+  <p class="nota">Nenhuma área atinge a demanda mínima configurada para sugerir um novo equipamento.</p>
+  {% endif %}
+
+  {% if t.mat %}
+  <p class="nota">Matrículas no município (todas as redes, Censo Escolar 2024): municipal {{ t.mat.Municipal|n }}, estadual
+    {{ t.mat.Estadual|n }}, privada {{ t.mat.Privada|n }} — total {{ t.mat.total|n }} para uma demanda-meta de {{ t.dem|n }}.
+    Escolas privadas não têm localização na base e não entram no mapa.</p>
+  {% endif %}
+</section>
+{% endfor %}
+
+<!-- ============ Metodologia ============ -->
+<section class="pagina">
+  <h2>Metodologia e parâmetros</h2>
+  <p><b>População.</b> População e faixas etárias por setor censitário (Censo 2022). As faixas de 0–3, 4–5, 6–10 e 11–14 anos
+    foram estimadas a partir das faixas quinquenais dos setores e da distribuição por idade simples do município (SIDRA 9514).
+    A população de cada setor foi repartida entre os endereços residenciais do CNEFE 2022, para localizar onde as pessoas moram.</p>
+  {% if modo == 'rede' %}
+  <p><b>Cobertura.</b> Um morador está coberto quando chega a pé a um equipamento do tipo percorrendo, no máximo, a distância do
+    raio de atendimento pelas ruas e caminhos de pedestres do OpenStreetMap ({{ rede_km|n }} km de vias no município e entorno de 2 km).
+    Cada endereço e cada equipamento é ligado à via mais próxima; o caminho mais curto é calculado pelo algoritmo de Dijkstra.
+    Na zona rural o raio é multiplicado por {{ fr|n(1) }}.</p>
+  {% else %}
+  <p><b>Cobertura.</b> Um morador está coberto quando há equipamento do tipo dentro do raio de atendimento, em linha reta. Na zona
+    rural o raio é multiplicado por {{ fr|n(1) }}.{% if comp %} A tabela da primeira página mostra o mesmo cálculo a pé pelas ruas.{% endif %}</p>
+  {% endif %}
+  <p><b>Capacidade.</b> Método de área de influência flutuante em dois passos (2SFCA): a capacidade de cada equipamento é dividida
+    pela demanda dentro do seu raio, e cada morador recebe a soma das parcelas dos equipamentos que o alcançam. A demanda-meta é a
+    população da faixa vezes a meta de atendimento. “Falta de capacidade” é a demanda dentro de algum raio que a capacidade instalada
+    não alcança; não se soma à demanda fora de qualquer raio.</p>
+
+  <table>
+    <tr><th>Equipamento</th><th class="n">Raio</th><th>Faixa</th><th class="n">Meta</th><th>Capacidade</th><th>Redes</th>
+      <th class="n">0,5× raio</th><th class="n">raio</th><th class="n">1,5× raio</th></tr>
+    {% for t in tipos %}
+    <tr><td>{{ t.rotulo.split(' (')[0] }}</td><td class="n">{{ t.cfg.raio_m|n }} m</td><td>{{ t.cfg.faixa_demanda.replace('pop_', '').replace('_', '–').replace('total', 'todos') }}</td>
+      <td class="n">{{ (100 * t.cfg.taxa_atendimento_meta)|n }}%</td><td>{{ t.capacidade_txt }}</td><td>{{ t.redes }}</td>
+      <td class="n">{{ t.sens['0.5']|n }}%</td><td class="n">{{ t.sens['1']|n }}%</td><td class="n">{{ t.sens['1.5']|n }}%</td></tr>
+    {% endfor %}
+  </table>
+  <p class="nota">As três últimas colunas mostram a população coberta com metade, o mesmo e 1,5 vez o raio — a sensibilidade do
+    resultado ao parâmetro. Os raios e metas são padrões iniciais de planejamento, a validar com a legislação e o plano diretor do município.</p>
+
+  <h3>Limitações</h3>
+  <ul class="achados">
+    {% if modo == 'rede' %}
+    <li>A malha do OpenStreetMap é mantida por voluntários: vias ou atalhos que faltam no mapa aumentam a distância calculada, e vias
+      mapeadas mas intransitáveis a diminuem. Não considera relevo, calçadas, travessias perigosas nem transporte coletivo.</li>
+    {% else %}
+    <li>Distância em linha reta: ignora barreiras (rodovias, linha férrea, relevo) e o traçado das ruas{% if comp %}; ver a comparação
+      com a distância a pé na primeira página{% endif %}.</li>
+    {% endif %}
+    <li>Matrícula não é vaga: a capacidade real pode ser maior ou menor que as matrículas registradas.</li>
+    <li>Escolas privadas atendem parte da demanda e não aparecem no mapa por falta de localização.</li>
+    <li>Equipamentos sem localização ficam fora do cálculo; os de localização aproximada entram, sinalizados.</li>
+  </ul>
+
+  {% if pendencias %}
+  <h3>Dados a confirmar com a prefeitura</h3>
+  <ul class="duas">{% for p in pendencias %}<li>{{ p }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  <h3>Fontes</h3>
+  <p class="nota">IBGE – Censo Demográfico 2022: malha e agregados por setor censitário, SIDRA tabela 9514, CNEFE 2022.
+    INEP – Catálogo de Escolas e Microdados do Censo Escolar 2024. Ministério da Saúde – CNES (estabelecimentos) e DATASUS
+    (equipes, competência mais recente). Mapa de fundo e malha viária © OpenStreetMap contributors (ODbL).</p>
+</section>
+</body>
+</html>
