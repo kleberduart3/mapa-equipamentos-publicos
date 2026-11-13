@@ -1,6 +1,6 @@
 """Gera UM arquivo HTML autocontido com o mapa (dados embutidos e comprimidos).
 
-    python backend/scripts/exportar_html_unico.py [--passo 250] [--saida saidas/mapa_arapiraca.html]
+    python backend/scripts/exportar_html_unico.py [--passo 500] [--saida saidas/mapa_arapiraca.html]
 
 Usa a pasta site/ gerada por exportar_estatico.py. O arquivo funciona aberto em
 qualquer hospedagem (ou com duplo clique), sem servidor e sem outras pastas.
@@ -43,7 +43,7 @@ CARREGADOR = """<script>
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--passo", type=int, default=250)
+    ap.add_argument("--passo", type=int, default=500)
     ap.add_argument("--site", type=Path, default=RAIZ / "site")
     ap.add_argument("--saida", type=Path, default=RAIZ / "dados" / "saidas" / "mapa_arapiraca.html")
     a = ap.parse_args()
