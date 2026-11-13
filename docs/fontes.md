@@ -57,3 +57,20 @@ Os casos 2 a 4 e os sem coordenada vão para a conferência. Testado contra o Ca
 2. **UBS Poção (CNES 3047113):** a coordenada do CNES cai 3,7 km fora do limite municipal. Conferir.
 3. **UBS Agreste (CNES 5747872)** sem localização e **UBS Planalto II (5802911)** só com o centro do CEP.
 4. Fornecer vagas reais de creche, se houver (hoje usamos matrículas).
+
+## Pasta de conferência das fontes
+
+`python backend/scripts/fontes_conferencia.py --municipio CÓDIGO` (também a última etapa de `processar_municipio.py`)
+monta `dados/fontes/{código}_{nome}/` com:
+
+- **originais/**: arquivos do município exatamente como baixados (CNEFE, SIDRA 9514 em JSON, equipes do CNES, malha do OSM,
+  Catálogo do INEP quando houver);
+- **recortes/**: as linhas do município copiadas byte a byte dos arquivos nacionais (agregados do Censo, microdados do Censo
+  Escolar, estabelecimentos do CNES) e os setores do município da malha do estado;
+- **documentacao/**: dicionários de dados e notas oficiais (IBGE, INEP, DATASUS);
+- **LEIA-ME.md** e **fontes.json**: link oficial, data, tamanho e SHA-256 de cada arquivo, mais as conferências automáticas
+  (o MD5 dos microdados do INEP é comparado com o publicado pelo próprio INEP).
+
+O relatório PDF traz os links oficiais clicáveis na seção "Fontes".
+A exportação em planilha da tabela 9514 no SIDRA e as páginas do ibge.gov.br recusam acesso automático (403); por isso a
+pasta guarda a resposta original da API do SIDRA (JSON), e os links do PDF apontam para as páginas, que abrem no navegador.

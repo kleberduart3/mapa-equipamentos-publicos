@@ -45,6 +45,9 @@
   .nota { font-size: 8pt; color: #4A5072; }
   .duas { columns: 2; column-gap: 18px; font-size: 8.6pt; }
   .duas li { break-inside: avoid; }
+  a { color: #2F4BFF; text-decoration: underline; text-underline-offset: 2px; }
+  ul.fontes { padding-left: 16px; margin: 4px 0 8px; font-size: 8.6pt; }
+  ul.fontes li { margin-bottom: 4px; break-inside: avoid; }
 </style>
 </head>
 <body>
@@ -204,9 +207,14 @@
   {% endif %}
 
   <h3>Fontes</h3>
-  <p class="nota">IBGE – Censo Demográfico 2022: malha e agregados por setor censitário, SIDRA tabela 9514, CNEFE 2022.
-    INEP – Catálogo de Escolas e Microdados do Censo Escolar 2024. Ministério da Saúde – CNES (estabelecimentos) e DATASUS
-    (equipes, competência mais recente). Mapa de fundo e malha viária © OpenStreetMap contributors (ODbL).</p>
+  <ul class="fontes">
+    {% for f in referencias %}
+    <li><b>{{ f.orgao }}</b> – {{ f.titulo }}. <span class="sub">Usado para: {{ f.uso }}.</span>
+      {% for rotulo, url in f.links %}<a href="{{ url }}">{{ rotulo }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</li>
+    {% endfor %}
+  </ul>
+  <p class="nota">Os links acima abrem as páginas oficiais. Os arquivos originais usados neste relatório, sem alteração, com a
+    documentação oficial e o código de verificação (SHA-256) de cada um, ficam guardados para conferência e podem ser enviados a pedido.</p>
 </section>
 </body>
 </html>

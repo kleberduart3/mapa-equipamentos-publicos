@@ -22,6 +22,7 @@ from markupsafe import Markup
 
 from ..analise import cobertura as cob
 from .. import servicos
+from ..fontes import REFERENCIAS as FONTES_REF
 from ..analise.contexto import Base, base
 from ..estilo import ESTILO, UNIDADE
 from ..ingestao import inep
@@ -329,7 +330,7 @@ def montar_html(b: Base, raios: dict[str, int] | None = None, modo: str = "reta"
     env.filters["min"] = lambda m: max(1, round(float(m) / vel))      # metros → minutos a pé
     return env.get_template("modelo.html").render(
         logo=Markup(LOGO.read_text(encoding="utf-8")) if LOGO.exists() else "Equicidade",
-        titulo_visao=titulo_visao,
+        titulo_visao=titulo_visao, referencias=FONTES_REF,
         m=m, data=f"{hoje.day} de {MESES[hoje.month - 1]} de {hoje.year}", P=P, fr=b.fr,
         pop=int(b.setores["pop_total"].sum()), n_setores=len(b.setores), tipos=tipos,
         mapa_prioridade=mapa_prioridade(b, an), achados=achados(an, mat) + achado_rede(comp, modo), pendencias=pendencias(b),

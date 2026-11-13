@@ -46,6 +46,19 @@ NACIONAIS = {
 }
 
 
+REGISTRO = BRUTOS / "registro_downloads.json"
+
+
+def registrar(destino: Path, url: str) -> None:
+    """Guarda de onde e quando veio cada arquivo (usado por fontes_conferencia.py)."""
+    import json
+    from datetime import datetime
+    reg = json.loads(REGISTRO.read_text("utf-8")) if REGISTRO.exists() else {}
+    reg[destino.relative_to(BRUTOS).as_posix()] = {
+        "url": url, "baixado_em": datetime.now().astimezone().strftime("%d/%m/%Y %H:%M"), "bytes": destino.stat().st_size}
+    REGISTRO.write_text(json.dumps(reg, ensure_ascii=False, indent=1), "utf-8")
+
+
 def baixar(url: str, destino: Path) -> None:
     if destino.exists() and destino.stat().st_size > 0:
         print(f"  já existe: {destino.relative_to(RAIZ)}")
@@ -59,6 +72,7 @@ def baixar(url: str, destino: Path) -> None:
             for bloco in r.iter_content(1 << 20):
                 f.write(bloco)
     tmp.replace(destino)
+    registrar(destino, url)
     print(f"    ok ({destino.stat().st_size / 1e6:.1f} MB)")
 
 
@@ -91,6 +105,7 @@ def baixar_equipes_cnes(m: Municipio) -> None:
         print(f"  baixando ftp://{DATASUS_FTP}{DATASUS_EP}/{nome}")
         with open(destino, "wb") as f:
             ftp.retrbinary(f"RETR {nome}", f.write)
+        registrar(destino, f"ftp://{DATASUS_FTP}{DATASUS_EP}/{nome}")
 
 
 def arquivos_do_municipio(m: Municipio) -> dict[Path, str]:

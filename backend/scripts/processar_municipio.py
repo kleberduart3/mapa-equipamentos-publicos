@@ -8,6 +8,7 @@ Etapas, em ordem:
   preparar  limpeza, CRS, escolas geocodificadas, conferência   – preparar_municipio.py
   cobertura indicadores e áreas prioritárias (linha reta)       – calcular_cobertura.py
   rede      malha a pé do OpenStreetMap                         – preparar_rede.py
+  fontes    pasta de conferência: originais, recortes, documentação oficial e hashes – fontes_conferencia.py
 
 Depois, leia dados/saidas/{código}/checagem_dados.md: escolas sem coordenada
 precisa e UBS fora do limite precisam de conferência com a prefeitura.
@@ -28,9 +29,10 @@ import requests  # noqa: E402
 
 from backend.app.config import CONFIG_MUNICIPIOS, RAIZ, cod_valido  # noqa: E402
 
-ETAPAS = ["config", "baixar", "preparar", "cobertura", "rede"]
+ETAPAS = ["config", "baixar", "preparar", "cobertura", "rede", "fontes"]
 SCRIPTS = {"baixar": "baixar_dados.py", "preparar": "preparar_municipio.py",
-           "cobertura": "calcular_cobertura.py", "rede": "preparar_rede.py"}
+           "cobertura": "calcular_cobertura.py", "rede": "preparar_rede.py",
+           "fontes": "fontes_conferencia.py"}
 
 
 def criar_config(cod: str) -> None:
