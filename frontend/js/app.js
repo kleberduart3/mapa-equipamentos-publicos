@@ -345,7 +345,7 @@ function atualizarCobertura(t, atraso = 0) {
   clearTimeout(st.timers[t]);
   st.timers[t] = setTimeout(async () => {
     st.pendentes = (st.pendentes || 0) + 1;
-    $("#carregando").hidden = false;
+    $("#carregando").hidden = false; $("#carregando").textContent = "Calculando…";
     const raioPedido = st.raio[t], modoPedido = st.modo;
     try {
       const [d] = await Promise.all([api(`/${st.cod}/cobertura?tipo=${t}&raio=${raioPedido}&modo=${modoPedido}`),
@@ -476,7 +476,7 @@ async function atualizarRanking() {
   if (ESTATICO) return;
   const t = st.mostrar === "prioridade" ? null : st.mostrar;
   if (!t) {
-    $("#ranking-titulo").textContent = "Escolha um tipo de equipamento em “Mostrar no mapa” para ver o ranking.";
+    $("#ranking-titulo").textContent = "Escolha um serviço no passo 01 para ver os bairros com mais gente fora do raio.";
     $("#ranking").innerHTML = "";
     return;
   }
@@ -677,6 +677,9 @@ function mudarModo(modo) {
 }
 
 /* ---------- Indicadores ---------- */
+/* nome curto para barras e legenda (os rótulos completos ficam no painel) */
+const nomeCurto = (c) => c.rotulo.split(" (")[0].replace("Fundamental – anos ", "Fund. anos ").replace("Unidade Básica de Saúde", "UBS");
+
 function atualizarKpis() {
   const tipos = st.cfg.tipos;
   const pop = st.cob.ubs?.indicadores.pop_faixa;
@@ -685,7 +688,7 @@ function atualizarKpis() {
   const nRadar = Object.values(st.cob).reduce((s, d) => s + d.radar.features.length, 0);
   const barras = Object.entries(tipos).map(([k, c]) => {
     const v = st.cob[k]?.indicadores.pct_coberta;
-    return `<div class="barra"><span>${esc(c.rotulo.split(" (")[0].replace("Fundamental – ", ""))}</span>
+    return `<div class="barra"><span>${esc(nomeCurto(c))}</span>
       <span class="trilha"><span class="cheio" style="width:${v ?? 0}%;background:${c.cor}"></span></span><b>${v == null ? "…" : fmt(v, 0) + "%"}</b></div>`;
   }).join("");
   $("#kpis").innerHTML = `
@@ -693,18 +696,19 @@ function atualizarKpis() {
     <div class="kpi"><div class="rot">Sem ${esc(tipos[t].rotulo.split(" (")[0].toLowerCase())} no raio</div>
       <div class="val">${it ? fmt(it.pop_descoberta) : "…"}</div><div class="sub">${tipos[t].unidade} · raio ${fmt(st.raio[t])} m ${APE() ? "a pé" : ""}</div>
       ${st.cob[t]?.acesso?.tempo_medio_min != null ? `<div class="sub">Tempo médio a pé até a mais próxima: <b>${fmt(st.cob[t].acesso.tempo_medio_min, 0)} min</b></div>` : ""}</div>
-    <div class="kpi cobertura"><div class="rot">População coberta pelo raio de cada equipamento · ${txtDist()}</div>${barras}
-      <div class="sub" style="margin-top:6px">${nRadar} áreas prioritárias sugeridas no mapa</div></div>`;
+    <div class="kpi cobertura"><div class="rot">Quem está dentro do raio · ${txtDist()}</div>${barras}
+      <div class="sub kpi-rodape"><span class="ponto-coral"></span>${nRadar} áreas prioritárias sugeridas no mapa</div></div>`;
 }
 
 function atualizarLegenda() {
   const itens = Object.entries(st.cfg.tipos).filter(([t]) => st.visivel[t]).map(([t, c]) => `
-    <div class="leg-item">${svgIcone(c.cor, c.icone)}
+    <div class="leg-item"><span class="leg-icos">${svgIcone(c.cor, c.icone)}
       <svg class="leg-radar" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="${c.cor}" fill-opacity=".1" stroke="${c.cor}" stroke-width="1.4"/>
-        <circle cx="11" cy="11" r="6.6" fill="none" stroke="${c.cor}" stroke-opacity=".5"/><circle cx="11" cy="11" r="3.3" fill="none" stroke="${c.cor}" stroke-opacity=".3"/></svg>
-      <span>${esc(c.rotulo.split(" (")[0])} – <b>${fmt(st.raio[t])} m</b> · ${minutos(st.raio[t])} min</span></div>`).join("");
+        <circle cx="11" cy="11" r="6.6" fill="none" stroke="${c.cor}" stroke-opacity=".5"/><circle cx="11" cy="11" r="3.3" fill="none" stroke="${c.cor}" stroke-opacity=".3"/></svg></span>
+      <span class="leg-txt">${esc(nomeCurto(c))}<small><b>${fmt(st.raio[t])} m</b> · ${minutos(st.raio[t])} min a pé</small></span></div>`).join("");
   $("#legenda").innerHTML = `<h3>Equipamentos e raios ${APE() ? "(a pé)" : ""}</h3>${itens}
-    <div class="leg-item"><span class="radar" style="--cor:#FF6B57;width:18px;height:18px"><span class="nucleo"></span></span><span>Área prioritária (radar)</span></div>
+    <div class="leg-sep"></div>
+    <div class="leg-item"><span class="radar" style="--cor:#FF6B57;width:18px;height:18px"><span class="nucleo"></span></span><span>Área prioritária sugerida</span></div>
     <div class="leg-item"><span class="leg-hex"></span><span>Demanda não resolvida</span></div>
     <div class="leg-item"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#C93A27" stroke-width="1.6" stroke-dasharray="3 2.2"/></svg><span>Localização a confirmar</span></div>
     <div class="nota">${APE() ? "Mancha: alcance a pé pelas ruas. " : ""}Zona rural: raio × ${fmt(st.cfg.fator_raio_rural, 1)}</div>`;
