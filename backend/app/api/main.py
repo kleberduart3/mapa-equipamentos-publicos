@@ -211,6 +211,7 @@ async def relatorio(cod: str, request: Request, acesso=Depends(ver_municipio)):
     import json as _json
 
     from ..relatorio.gerar import gerar_pdf, nome_arquivo
+    from ..relatorio.visao import gerar_pdf_visao
     from .visoes import visao_do_municipio
 
     u = acesso[0]
@@ -247,7 +248,10 @@ async def relatorio(cod: str, request: Request, acesso=Depends(ver_municipio)):
         sufixo = f"_{nome_arquivo(titulo_visao)[:40]}" if titulo_visao else ""
         destino = pasta / f"relatorio_{nome_arquivo(m.nome)}{sufixo}{'_a_pe' if modo == 'rede' else ''}.pdf"
         try:
-            await run_in_threadpool(gerar_pdf, cod, destino, raios, modo, 180, titulo_visao)
+            if titulo_visao:      # relatório próprio da visão: enquadramento, serviço, camadas e simulação dela
+                await run_in_threadpool(gerar_pdf_visao, cod, {**estado, "raios": raios, "modo": modo}, titulo_visao, destino)
+            else:
+                await run_in_threadpool(gerar_pdf, cod, destino, raios, modo, 180)
         except Exception:
             shutil.rmtree(pasta, ignore_errors=True)
             raise

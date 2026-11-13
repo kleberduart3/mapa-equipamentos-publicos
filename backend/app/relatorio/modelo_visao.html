@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>{{ titulo }} – {{ m.nome }}/{{ m.uf }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Instrument Sans', Arial, sans-serif; color: #0D1450; font-size: 10pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 20pt; line-height: 1.15; margin: 0 0 4px; letter-spacing: -.02em; }
+  h2 { font-size: 13pt; margin: 14px 0 6px; color: #2F4BFF; }
+  h3 { font-size: 10.5pt; margin: 12px 0 5px; }
+  p { margin: 0 0 8px; }
+  .sub { color: #4A5072; }
+  .topo { border-bottom: 3px solid #2F4BFF; padding-bottom: 10px; margin-bottom: 12px; }
+  .marca { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .marca svg { height: 9mm; width: auto; display: block; }
+  .mapa { width: 100%; border: 1px solid #D5D9EA; border-radius: 6px; display: block; max-height: 150mm; object-fit: contain; }
+  .legenda { font-size: 8pt; color: #4A5072; margin-top: 4px; }
+  .legenda .ponto { width: 8px; height: 8px; }
+  .ponto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .servico { border-left: 6px solid var(--cor); padding-left: 10px; margin: 12px 0 6px; break-inside: avoid; }
+  .servico h2 { color: var(--cor); margin-top: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.8pt; margin: 6px 0 10px; }
+  th, td { padding: 4px 6px; border-bottom: 1px solid #D5D9EA; text-align: left; vertical-align: top; }
+  th { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .03em; color: #4A5072; font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.n { font-family: 'IBM Plex Mono', monospace; font-size: 8.4pt; }
+  tr { break-inside: avoid; }
+  .sim { border: 1.5px dashed #2F4BFF; border-radius: 8px; padding: 10px 12px; margin: 10px 0; background: #F4F6FF; break-inside: avoid; }
+  .sim h2 { margin-top: 0; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0 4px; }
+  .kpi { border: 1px solid #D5D9EA; border-radius: 8px; padding: 7px 9px; background: #fff; }
+  .kpi .r { font-size: 7.3pt; text-transform: uppercase; letter-spacing: .04em; color: #4A5072; }
+  .kpi .v { font-family: 'IBM Plex Mono', monospace; font-size: 13pt; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .nota { font-size: 8pt; color: #4A5072; }
+  .bloco { break-inside: avoid; }
+  a { color: #2F4BFF; text-decoration: underline; text-underline-offset: 2px; }
+  ul.fontes { padding-left: 16px; margin: 4px 0 8px; font-size: 8.4pt; }
+  ul.fontes li { margin-bottom: 3px; break-inside: avoid; }
+  .duas { columns: 2; column-gap: 18px; font-size: 8.4pt; padding-left: 0; margin: 4px 0; list-style: none; }
+  .duas li { break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <div class="marca">{{ logo }}<span class="sub">equicidade.com.br</span></div>
+  <div class="sub">Visão salva do mapa · {{ m.nome }} – {{ m.uf }}</div>
+  <h1>{{ titulo }}</h1>
+  <div class="sub">{{ data }} · Mostrando: <b>{{ 'prioridade geral (todos os serviços)' if prioridade else servicos[0].rotulo }}</b>
+    · distância {{ 'a pé pelas ruas (OpenStreetMap)' if modo == 'rede' else 'em linha reta' }}
+    · mapa por {{ 'setor censitário' if unid == 'setor' else 'hexágonos' }}</div>
+</div>
+
+<img class="mapa" src="{{ mapa }}" alt="Mapa da visão salva">
+<p class="legenda">
+  {% for l in legenda_tipos %}<span class="ponto" style="background:{{ l.cor }}"></span>{{ l.rotulo }} &nbsp; {% endfor %}
+  <br>{% if prioridade %}Tons de vermelho: índice de prioridade (mais escuro = agir primeiro).{% else %}Tons de vermelho: quantas {{ servicos[0].unidade }} moram longe ou estão sem vaga/equipe em cada {{ 'setor' if unid == 'setor' else 'hexágono' }} (mais escuro = mais).{% endif %}
+  {% if camadas.raios %}Áreas claras na cor do serviço: o que fica a até o tempo adotado a pé de cada unidade.{% endif %}
+  {% if camadas.radar and not prioridade %}Radares numerados: áreas prioritárias sugeridas para uma nova unidade.{% endif %}
+  {% if sim %}Ponto azul e área tracejada: a nova unidade simulada.{% endif %}
+  Contorno vermelho no ponto: localização aproximada.
+  {% if not enquadrado %}A visão não guardou o enquadramento: o mapa mostra a área urbana.{% endif %}
+</p>
+
+{% if sim %}
+<div class="sim">
+  <h2>Simulação: nova unidade ({{ sim.rotulo.split(' (')[0] }}){% if sim.bairro %} no bairro {{ sim.bairro }}{% endif %}</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="r">Passariam a morar perto</div><div class="v">{{ sim.novos_atendidos|n }}</div></div>
+    <div class="kpi"><div class="r">{{ sim.unidade|capitalize }} a até {{ sim.raio_efetivo_m|min }} min</div><div class="v">{{ sim.pop_no_raio|n }}</div></div>
+    <div class="kpi"><div class="r">Moram perto hoje</div><div class="v">{{ sim.pct_coberta_antes|n(1) }}%</div></div>
+    <div class="kpi"><div class="r">Com a nova unidade</div><div class="v">{{ sim.pct_coberta_depois|n(1) }}%</div></div>
+  </div>
+  <p class="nota">Conta as {{ sim.unidade }} que ficariam a até {{ sim.raio_efetivo_m|min }} min a pé do ponto
+    ({{ 'pelas ruas' if modo == 'rede' else 'em linha reta' }}{% if sim.rural %}, distância ampliada da zona rural{% endif %}) e, entre elas,
+    as que hoje não têm nenhuma unidade nesse tempo. Demanda que a unidade poderia absorver, contando quem hoje está sem vaga ou equipe:
+    {{ sim.demanda_total_absorvivel|n }}.</p>
+</div>
+{% endif %}
+
+{% for s in servicos %}
+<div class="servico" style="--cor: {{ s.cor }}">
+  <h2>{{ s.rotulo }}</h2>
+  <div class="sub">Mora perto quem está a até {{ s.minutos }} min a pé (cerca de {{ s.raio|n }} m {{ 'pelas ruas' if modo == 'rede' else 'em linha reta' }}; na zona rural, até {{ (s.raio * fr)|min }} min)</div>
+</div>
+<table>
+  <tr><th></th><th class="n">{{ s.unidade|capitalize }}</th><th class="n">Moram longe</th><th class="n">Moram perto</th><th class="n">Tempo médio a pé</th></tr>
+  <tr><td><b>Área do mapa</b></td><td class="n">{{ s.n.area.total|n }}</td><td class="n"><b>{{ s.n.area.longe|n }}</b></td>
+    <td class="n">{{ s.n.area.pct_perto|n(1) if s.n.area.pct_perto is not none else '–' }}{% if s.n.area.pct_perto is not none %}%{% endif %}</td>
+    <td class="n">{{ s.n.area.tempo|n(1) if s.n.area.tempo is not none else '–' }}{% if s.n.area.tempo is not none %} min{% endif %}</td></tr>
+  <tr><td>Município inteiro</td><td class="n">{{ s.n.municipio.total|n }}</td><td class="n">{{ s.n.municipio.longe|n }}</td>
+    <td class="n">{{ s.n.municipio.pct_perto|n(1) }}%</td><td class="n">{{ s.n.municipio.tempo|n(1) if s.n.municipio.tempo is not none else '–' }} min</td></tr>
+</table>
+{% if s.n.bairros %}
+<div class="bloco">
+<h3>Bairros da área do mapa com mais {{ s.unidade }} morando longe</h3>
+<table>
+  <tr><th>Bairro</th><th class="n">{{ s.unidade|capitalize }}</th><th class="n">Moram longe</th><th class="n">% longe</th><th class="n">Tempo médio a pé</th></tr>
+  {% for r in s.n.bairros %}
+  <tr><td>{{ r.bairro }}</td><td class="n">{{ r.total|n }}</td><td class="n">{{ r.longe|n }}</td><td class="n">{{ r.pct|n }}%</td><td class="n">{{ r.tempo|n(1) }} min</td></tr>
+  {% endfor %}
+</table>
+<p class="nota">Bairros com moradias dentro da área do mapa; os números contam só essas moradias.</p>
+</div>
+{% endif %}
+{% endfor %}
+
+{% if unidades_area %}
+<div class="bloco">
+<h3>Unidades na área do mapa</h3>
+<ul class="duas">{% for u in unidades_area %}<li><span class="ponto" style="background:{{ u.cor }}"></span>{{ u.nome }} <span class="sub">· {{ u.tipo }} · {{ u.bairro }}</span></li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="bloco">
+<h3>Como ler</h3>
+<p class="nota">“Área do mapa” é o trecho que aparecia na tela quando a visão foi salva. A população vem do Censo 2022 (IBGE), distribuída
+  pelos endereços do CNEFE dentro de cada setor; as unidades vêm do Censo Escolar 2024 (INEP) e do CNES. Quem mora longe está a mais
+  do tempo adotado a pé da unidade mais próxima; o tempo usa {{ vel|n }} metros por minuto. O relatório geral do município traz o método
+  completo, a sensibilidade às distâncias e as limitações.</p>
+
+<h3>Fontes</h3>
+<ul class="fontes">
+  {% for f in referencias %}
+  <li><b>{{ f.orgao }}</b> – {{ f.titulo }}. {% for rotulo, url in f.links %}<a href="{{ url }}">{{ rotulo }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</li>
+  {% endfor %}
+</ul>
+</div>
+</body>
+</html>

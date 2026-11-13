@@ -349,16 +349,23 @@ def nome_arquivo(nome: str) -> str:
 
 def gerar_pdf(cod: str, destino: Path | None = None, raios: dict[str, int] | None = None,
               modo: str = "reta", tempo_limite_s: float = 180, titulo_visao: str | None = None) -> Path:
-    from playwright.sync_api import sync_playwright
-
     b = base(cod)
     html = montar_html(b, raios, modo, titulo_visao)
     m = b.m.info()
     sufixo = "_a_pe" if modo == "rede" else ""
     destino = destino or b.m.saidas / f"relatorio_{nome_arquivo(m['nome'])}_{date.today():%Y%m%d}{sufixo}.pdf"
+    return imprimir_pdf(html, destino, f"Equicidade · {m['nome']}/{m['uf']}", tempo_limite_s)
+
+
+def imprimir_pdf(html: str, destino: Path, texto_rodape: str, tempo_limite_s: float = 180) -> Path:
+    """HTML → PDF A4 no Chromium (Playwright), com rodapé e numeração de páginas."""
+    from html import escape
+
+    from playwright.sync_api import sync_playwright
+
     destino.parent.mkdir(parents=True, exist_ok=True)
     rodape = (f'<div style="font:8px &quot;Instrument Sans&quot;,Arial,sans-serif;color:#4A5072;width:100%;padding:0 14mm;'
-              f'display:flex;justify-content:space-between"><span>Equicidade · {m["nome"]}/{m["uf"]}</span>'
+              f'display:flex;justify-content:space-between"><span>{escape(texto_rodape)}</span>'
               '<span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span></div>')
     with sync_playwright() as p:
         # /dev/shm do Docker tem 64 MB: com mapas grandes o Chromium cai sem esta opção

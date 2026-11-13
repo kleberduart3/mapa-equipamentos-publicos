@@ -116,17 +116,21 @@ def test_camadas_desligadas_por_padrao(app):
 
 
 def test_relatorio_da_visao(app, monkeypatch):
-    """O relatório da visão usa os raios e o modo guardados nela e leva o nome dela na capa."""
+    """O relatório da visão é o próprio da visão (não o geral), com o estado guardado nela e o nome dela."""
     from backend.app.api import main
-    from backend.app.relatorio import gerar
+    from backend.app.relatorio import gerar, visao
     chamadas = []
 
-    def falso(cod, destino, raios, modo, tempo, titulo):
-        chamadas.append((cod, raios, modo, titulo))
+    def falso(cod, estado, titulo, destino):
+        chamadas.append((cod, estado["raios"], estado["modo"], estado["mostrar"], titulo))
         destino.write_bytes(b"%PDF-1.4 teste")
         return destino
 
-    monkeypatch.setattr(gerar, "gerar_pdf", falso)
+    def geral(*a, **k):
+        raise AssertionError("visão salva não deve gerar o relatório geral")
+
+    monkeypatch.setattr(visao, "gerar_pdf_visao", falso)
+    monkeypatch.setattr(gerar, "gerar_pdf", geral)
     monkeypatch.setattr(main, "_medidor", lambda cod, modo: None)
     criar("a@x.gov.br", acessos=[(COD, "consulta")])
     entrar(app, "a@x.gov.br")
@@ -134,6 +138,6 @@ def test_relatorio_da_visao(app, monkeypatch):
     r = app.get(f"/api/{COD}/relatorio.pdf?visao={vid}")
     assert r.status_code == 200, r.text
     assert "creches_norte" in r.headers["content-disposition"]
-    assert chamadas == [(COD, {"creche": 800, "ubs": 1500}, "reta", "Creches norte")]
+    assert chamadas == [(COD, {"creche": 800, "ubs": 1500}, "reta", "creche", "Creches norte")]
     assert app.get(f"/api/{COD}/relatorio.pdf?visao=999999").status_code == 404
     assert app.get(f"/api/{COD}/relatorio.pdf?visao=abc").status_code == 400
