@@ -39,6 +39,7 @@ from ..acesso.web import (CabecalhosSeguranca, LimiteTaxa, ProtecaoCSRF, gerir_m
                           usuario_opcional, ver_municipio)
 from ..analise.contexto import MunicipioNaoProcessado
 from ..config import RAIZ, municipio, municipios
+from . import propostas
 from .visoes import rotas as rotas_visoes
 
 FRONT = RAIZ / "frontend"
@@ -72,6 +73,8 @@ app.add_middleware(CabecalhosSeguranca)
 app.include_router(rotas_auth)
 app.include_router(rotas_admin)
 app.include_router(rotas_visoes)
+app.include_router(propostas.admin)
+app.include_router(propostas.publico)
 
 
 @app.exception_handler(MunicipioNaoProcessado)
@@ -355,6 +358,15 @@ def pagina_admin(u: Usuario | None = Depends(usuario_opcional)):
     if not u.admin:
         return RedirectResponse("/", status_code=303)
     return _pagina("admin.html")
+
+
+@app.get("/p/{slug}", include_in_schema=False)
+def pagina_proposta(slug: str):
+    # a página não carrega nada sem o código; os dados vêm de POST /api/proposta/{slug}/abrir
+    r = _pagina("proposta.html")
+    r.headers["X-Robots-Tag"] = "noindex, nofollow"
+    r.headers["Referrer-Policy"] = "no-referrer"          # o link não vaza para sites externos
+    return r
 
 
 @app.get("/saude", include_in_schema=False)

@@ -94,6 +94,30 @@ class Visao(Base):
     criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
 
 
+class Proposta(Base):
+    """Proposta comercial para uma prefeitura: página pública /p/{slug}, aberta com um código.
+    Guardamos só o hash do código; o admin vê o código uma vez (ou gera outro)."""
+    __tablename__ = "propostas"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    slug: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    codigo_hash: Mapped[str] = mapped_column(String(64))
+    cliente: Mapped[str] = mapped_column(String(120))            # ex.: Prefeitura de Palmeira dos Índios
+    contato: Mapped[str | None] = mapped_column(String(120))     # nome de quem recebe (uso interno + saudação)
+    municipio: Mapped[str] = mapped_column(String(80))
+    uf: Mapped[str] = mapped_column(String(2))
+    populacao: Mapped[int] = mapped_column(Integer)
+    desconto_pct: Mapped[int] = mapped_column(Integer, default=0)  # sobre a assinatura do 1º ano
+    incluir_estudo: Mapped[bool] = mapped_column(Boolean, default=False)
+    observacao: Mapped[str | None] = mapped_column(Text)         # aparece na página
+    validade: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ativa: Mapped[bool] = mapped_column(Boolean, default=True)
+    criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    criada_por: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id", ondelete="SET NULL"))
+    aberturas: Mapped[int] = mapped_column(Integer, default=0)
+    ultima_abertura: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    falhas: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class Evento(Base):
     """Trilha de auditoria: logins, falhas, mudanças de conta, uploads, relatórios."""
     __tablename__ = "eventos"

@@ -1,0 +1,102 @@
+/* Área administrativa: navegação lateral + abas. Usa os tokens de app.css. */
+body.adm { background: var(--fundo); min-height: 100%; }
+.adm-topo { height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 0 24px; background: var(--texto); color: #fff; position: sticky; top: 0; z-index: 30; }
+.adm-marca { display: flex; align-items: center; gap: 14px; color: #fff; text-decoration: none; }
+.adm-marca img { height: 28px; width: auto; display: block; }
+.adm-marca span { font-weight: 500; color: #C3CBF0; padding-left: 14px; border-left: 1px solid rgba(255,255,255,.2); }
+.adm-voltar { color: #C3CBF0; text-decoration: none; font-weight: 600; font-size: 14px; }
+.adm-voltar:hover { color: #fff; }
+
+.adm-corpo { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: calc(100vh - 64px); }
+.adm-nav { background: var(--painel); border-right: 1px solid var(--borda); padding: 20px 12px; display: flex; flex-direction: column; gap: 4px;
+  position: sticky; top: 64px; align-self: start; height: calc(100vh - 64px); }
+.adm-nav a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; color: var(--texto-2);
+  text-decoration: none; font-weight: 600; font-size: 14px; }
+.adm-nav a:hover { background: var(--fundo); color: var(--texto); }
+.adm-nav a[aria-current="page"] { background: var(--primaria-clara); color: var(--primaria); }
+.adm-nav svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.adm-main { padding: 28px clamp(16px, 3vw, 40px) 48px; max-width: 1180px; width: 100%; }
+@media (max-width: 860px) {
+  .adm-corpo { grid-template-columns: 1fr; }
+  .adm-nav { position: sticky; top: 64px; height: auto; flex-direction: row; overflow-x: auto; padding: 8px 12px; z-index: 20;
+    border-right: 0; border-bottom: 1px solid var(--borda); }
+  .adm-nav a { white-space: nowrap; }
+  .adm-marca span { display: none; }
+}
+
+.aba { display: grid; gap: 20px; }
+.aba-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.aba-topo h1 { font-size: 28px; letter-spacing: -.02em; margin: 0; }
+.aba-topo .sub { margin: 4px 0 0; color: var(--texto-2); }
+.aba-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.aba-acoes .btn { text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; }
+.painel-bloco { background: var(--painel); border: 1px solid var(--borda); border-radius: 16px; padding: 20px; min-width: 0; }
+.painel-bloco h2 { font-size: 16px; margin: 0 0 14px; }
+.duas { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+
+/* indicadores do painel */
+.kpis-adm { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+.kpi-adm { background: var(--painel); border: 1px solid var(--borda); border-radius: 16px; padding: 18px; display: grid; gap: 4px;
+  text-decoration: none; color: inherit; transition: border-color .2s, transform .2s; }
+.kpi-adm:hover { border-color: var(--primaria); transform: translateY(-2px); }
+.kpi-adm .rot { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--texto-2); }
+.kpi-adm .val { font: 600 34px/1.1 var(--mono); color: var(--texto); }
+.kpi-adm .det { font-size: 13px; color: var(--texto-2); }
+.kpi-adm.destaque { background: var(--texto); border-color: var(--texto); }
+.kpi-adm.destaque .rot, .kpi-adm.destaque .det { color: #C3CBF0; }
+.kpi-adm.destaque .val { color: #fff; }
+
+.lista-simples { list-style: none; margin: 0; padding: 0; display: grid; }
+.lista-simples li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--borda); font-size: 14px; }
+.lista-simples li:last-child { border-bottom: 0; }
+.lista-simples .meta { color: var(--texto-2); font-size: 13px; white-space: nowrap; }
+.lista-simples .vazio { color: var(--texto-2); }
+
+/* tabelas */
+.tabela { font-size: 14px; }
+.tabela td { vertical-align: middle; }
+.tabela tbody tr:hover { background: var(--fundo); }
+.tabela .num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tabela .fraco { color: var(--texto-2); font-size: 13px; }
+.acoes-linha { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.acoes-linha .btn { padding: 5px 10px; font-size: 12px; }
+.selo { font-size: 12px; padding: 3px 10px; }
+.selo.ok { background: var(--primaria-clara); color: var(--primaria); }
+.selo.neutro { background: var(--fundo); color: var(--texto-2); }
+.filtro { margin-bottom: 12px; }
+.filtro input { width: 100%; max-width: 420px; font: inherit; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 10px; background: var(--painel); color: var(--texto); }
+
+/* formulário de proposta */
+.form-proposta { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 8px 24px; align-items: start; }
+.form-proposta .campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0 14px; }
+.form-proposta .larga { grid-column: 1 / -1; }
+.form-proposta textarea { font: inherit; padding: 10px 12px; border: 1px solid var(--controle); border-radius: var(--raio); resize: vertical; }
+.campo-check { display: flex; align-items: center; gap: 8px; font-weight: 500; margin: 10px 0; align-self: end; min-height: 44px; }
+.campo-check input { width: 18px; height: 18px; }
+.form-proposta .erro, .form-proposta .form-acoes { grid-column: 1 / -1; }
+.form-acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.previa { background: var(--texto); color: #fff; border-radius: 16px; padding: 18px; display: grid; gap: 10px; margin-top: 10px; position: sticky; top: 140px; }
+.previa .rot { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #A9B6FF; }
+.previa dl { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; font-size: 14px; }
+.previa dt { color: #C3CBF0; } .previa dd { margin: 0; font-family: var(--mono); font-weight: 600; text-align: right; }
+.previa .total { border-top: 1px solid rgba(255,255,255,.2); padding-top: 8px; }
+.previa dd.total { font-size: 20px; color: #fff; }
+.previa .aviso { font-size: 13px; color: #C3CBF0; margin: 0; }
+.previa .aviso.ruim { color: #FF8A7A; }
+@media (max-width: 900px) { .form-proposta { grid-template-columns: 1fr; } .previa { position: static; } }
+
+/* entrega do link + código */
+.entrega { background: var(--painel); border: 2px solid var(--primaria); border-radius: 16px; padding: 20px; display: grid; gap: 14px; }
+.entrega h2 { margin: 0; font-size: 18px; }
+.entrega .par { display: grid; grid-template-columns: 140px minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.entrega .par span { font-weight: 600; color: var(--texto-2); font-size: 14px; }
+.entrega .par input { font: 500 14px var(--mono); padding: 10px 12px; border: 1px solid var(--borda); border-radius: 10px; min-width: 0; background: var(--fundo); color: var(--texto); }
+.entrega .par input.codigo { font-size: 20px; letter-spacing: .12em; font-weight: 600; }
+.entrega textarea { font: inherit; font-size: 14px; padding: 12px; border: 1px solid var(--borda); border-radius: 10px; width: 100%; background: var(--fundo); color: var(--texto); }
+.entrega .aviso { margin: 0; font-size: 13px; color: var(--deficit); font-weight: 600; }
+@media (max-width: 600px) { .entrega .par { grid-template-columns: 1fr auto; } .entrega .par span { grid-column: 1 / -1; } }
+.entrega .ok { font-size: 14px; }
+
+.passo-a-passo ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.passo-a-passo code { font-family: var(--mono); font-size: 13px; background: var(--fundo); padding: 2px 6px; border-radius: 6px; }

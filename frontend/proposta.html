@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Proposta · Equicidade</title>
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/img/favicon-32.png" sizes="32x32" type="image/png">
+  <meta name="theme-color" content="#0D1450">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link href="/css/proposta.css" rel="stylesheet">
+</head>
+<body>
+<main class="portao" id="portao">
+  <div class="portao-cartao">
+    <img src="/img/equicidade-horizontal.svg" alt="Equicidade" width="150" height="34">
+    <div style="display:grid;gap:8px">
+      <h1>Sua proposta está pronta</h1>
+      <p>Digite o código de acesso que veio junto com o link.</p>
+    </div>
+    <form id="form-codigo" novalidate>
+      <label for="codigo">Código de acesso</label>
+      <input id="codigo" name="codigo" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false"
+        placeholder="ABCD-1234" maxlength="20" required>
+      <button type="submit" class="btn btn-primary">Abrir proposta</button>
+      <p class="portao-erro" id="erro-codigo" role="alert"></p>
+    </form>
+    <p class="portao-nota">Não recebeu o código? Fale com quem enviou o link.</p>
+  </div>
+</main>
+<div id="conteudo" hidden>
+<header class="top">
+  <div class="wrap">
+    <span class="logo"><img src="/img/equicidade-horizontal.svg" alt="Equicidade" width="150" height="34"></span>
+    <nav class="menu" aria-label="Seções">
+      <a href="#caso">Caso Arapiraca</a>
+      <a href="#entrega">O que entrega</a>
+      <a href="#orcamento" class="btn btn-primary">Ver orçamento</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-txt">
+      <span class="eyebrow" id="p-eyebrow">Proposta para prefeituras</span>
+      <h1>Sua cidade sabe onde faltam vagas de creche?</h1>
+      <p>A Equicidade mostra, bairro por bairro, quem está longe da creche, da escola e do posto de saúde, medindo pelo caminho que as famílias fazem a pé. Com isso a prefeitura decide onde construir e prova a demanda na hora de pedir recurso.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="#orcamento">Quanto custa para o meu município</a>
+        <a class="btn btn-ghost" href="#caso">Ver o caso de Arapiraca</a>
+      </div>
+    </div>
+    <div class="hero-vis">
+      <figure class="map-card">
+        <div class="map-bar"><span class="map-title"><img src="/img/equicidade-simbolo.svg" alt="" width="20" height="20">Arapiraca – AL · Creches, a pé pelas ruas</span>
+          <ul class="legend"><li><i style="background:#E8837A"></i>Crianças sem creche no raio</li></ul></div>
+        <div class="map-frame"><span class="pulse" style="left:34%;top:38%"></span><span class="pulse" style="left:93%;top:50%;animation-delay:.8s"></span><span class="pulse" style="left:64%;top:91%;animation-delay:1.6s"></span>
+          <img class="map" src="/img/mapa-arapiraca.jpg" width="1360" height="980" alt="Tela da Equicidade com o mapa de Arapiraca: equipamentos marcados e hexágonos vermelhos onde há crianças sem creche por perto"></div>
+        <figcaption class="map-attr">Mapa: © colaboradores do OpenStreetMap</figcaption>
+      </figure>
+      <div class="stat"><small>Arapiraca – AL · Censo 2022</small><strong>Sem creche por perto</strong><span class="num">10.216</span><span>crianças de 0 a 3 anos a mais de 500 m a pé de uma creche</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec dark" id="caso">
+  <svg class="rings" viewBox="0 0 1440 720" preserveAspectRatio="xMaxYMax slice" aria-hidden="true"><path d="M1718.9 120.0L1724.0 151.1L1725.4 182.6L1723.0 214.1L1716.6 245.0L1706.4 274.9L1692.5 303.3L1675.1 329.6L1654.7 353.6L1631.7 375.0L1606.6 393.6L1580.0 409.4L1552.5 422.5L1524.5 433.0L1496.4 441.2L1468.8 447.5L1441.8 452.3L1415.7 456.0L1390.4 459.1L1366.0 461.9L1342.4 464.7L1319.2 467.9L1296.3 471.5L1273.3 475.6L1250.0 480.1L1226.1 484.9L1201.4 489.5L1175.7 493.7L1148.9 497.1L1121.3 499.2L1092.8 499.6L1063.7 497.7L1034.4 493.4L1005.3 486.2L976.9 475.9L949.5 462.6L923.8 446.2L900.2 426.8L879.0 404.7L860.6 380.2L845.3 353.6L833.2 325.5L824.3 296.3L818.5 266.5L815.8 236.4L815.7 206.4L818.0 176.9L822.4 148.0L828.5 120.0L835.9 92.9L844.3 66.6L853.5 41.1L863.1 16.3L873.1 -7.9L883.5 -31.8L894.2 -55.5L905.4 -79.0L917.2 -102.4L929.8 -125.7L943.5 -148.8L958.5 -171.5L974.9 -193.6L993.0 -214.9L1012.9 -234.9L1034.4 -253.4L1057.7 -269.9L1082.6 -284.1L1108.9 -295.7L1136.3 -304.5L1164.4 -310.3L1193.0 -313.0L1221.6 -312.7L1250.0 -309.5L1277.8 -303.5L1304.6 -295.0L1330.4 -284.4L1355.1 -272.1L1378.4 -258.3L1400.6 -243.6L1421.7 -228.1L1441.8 -212.3L1461.3 -196.2L1480.3 -180.1L1499.1 -164.0L1517.8 -147.8L1536.7 -131.4L1555.8 -114.6L1575.1 -97.2L1594.6 -79.0L1614.1 -59.6L1633.3 -38.8L1651.8 -16.4L1669.3 7.7L1685.2 33.4L1699.1 60.9L1710.5 89.8Z" fill="none" stroke="#18237A" stroke-width="10" stroke-linejoin="round"/><path d="M1584.9 120.0L1588.6 142.2L1589.6 164.7L1587.9 187.2L1583.3 209.3L1576.0 230.7L1566.0 250.9L1553.6 269.7L1539.0 286.9L1522.6 302.2L1504.7 315.4L1485.7 326.7L1466.0 336.0L1446.0 343.5L1426.0 349.4L1406.3 353.9L1387.0 357.3L1368.4 360.0L1350.3 362.2L1332.9 364.2L1316.0 366.2L1299.4 368.5L1283.1 371.1L1266.6 374.0L1250.0 377.2L1232.9 380.6L1215.3 383.9L1196.9 387.0L1177.8 389.4L1158.1 390.9L1137.7 391.1L1116.9 389.8L1096.0 386.7L1075.2 381.5L1054.9 374.2L1035.4 364.7L1017.0 353.0L1000.1 339.1L985.0 323.3L971.9 305.8L961.0 286.9L952.3 266.8L945.9 245.9L941.8 224.6L939.8 203.1L939.8 181.7L941.5 160.6L944.6 140.0L948.9 120.0L954.2 100.6L960.2 81.9L966.8 63.7L973.6 46.0L980.8 28.6L988.2 11.6L995.9 -5.3L1003.8 -22.1L1012.3 -38.8L1021.3 -55.5L1031.1 -72.0L1041.8 -88.2L1053.5 -104.0L1066.4 -119.2L1080.6 -133.5L1096.0 -146.7L1112.7 -158.5L1130.5 -168.6L1149.2 -176.9L1168.8 -183.2L1188.9 -187.3L1209.3 -189.3L1229.7 -189.1L1250.0 -186.8L1269.8 -182.5L1289.0 -176.4L1307.5 -168.9L1325.0 -160.1L1341.7 -150.2L1357.6 -139.7L1372.6 -128.7L1387.0 -117.3L1400.9 -105.9L1414.5 -94.4L1427.9 -82.9L1441.3 -71.3L1454.8 -59.6L1468.4 -47.6L1482.2 -35.2L1496.2 -22.1L1510.1 -8.3L1523.8 6.6L1537.0 22.6L1549.5 39.8L1560.9 58.2L1570.8 77.8L1578.9 98.4Z" fill="none" stroke="#1F2B8F" stroke-width="10" stroke-linejoin="round"/><path d="M1451.0 120.0L1453.1 133.3L1453.7 146.8L1452.7 160.3L1450.0 173.6L1445.6 186.4L1439.6 198.5L1432.2 209.8L1423.4 220.1L1413.6 229.3L1402.8 237.3L1391.4 244.0L1379.6 249.6L1367.6 254.1L1355.6 257.6L1343.8 260.3L1332.2 262.4L1321.0 264.0L1310.2 265.3L1299.7 266.5L1289.6 267.7L1279.7 269.1L1269.8 270.7L1260.0 272.4L1250.0 274.3L1239.8 276.4L1229.2 278.4L1218.1 280.2L1206.7 281.6L1194.8 282.5L1182.6 282.7L1170.2 281.9L1157.6 280.0L1145.1 276.9L1132.9 272.5L1121.2 266.8L1110.2 259.8L1100.1 251.5L1091.0 242.0L1083.1 231.5L1076.6 220.1L1071.4 208.1L1067.6 195.6L1065.1 182.8L1063.9 169.9L1063.9 157.0L1064.9 144.4L1066.8 132.0L1069.4 120.0L1072.5 108.4L1076.1 97.1L1080.1 86.2L1084.2 75.6L1088.5 65.2L1092.9 54.9L1097.5 44.8L1102.3 34.7L1107.4 24.7L1112.8 14.7L1118.7 4.8L1125.1 -4.9L1132.1 -14.4L1139.9 -23.5L1148.4 -32.1L1157.6 -40.0L1167.6 -47.1L1178.3 -53.2L1189.5 -58.2L1201.3 -61.9L1213.3 -64.4L1225.6 -65.6L1237.8 -65.4L1250.0 -64.1L1261.9 -61.5L1273.4 -57.9L1284.5 -53.3L1295.0 -48.0L1305.0 -42.1L1314.5 -35.8L1323.6 -29.2L1332.2 -22.4L1340.6 -15.5L1348.7 -8.6L1356.7 -1.7L1364.8 5.2L1372.9 12.3L1381.0 19.4L1389.3 26.9L1397.7 34.7L1406.0 43.0L1414.3 52.0L1422.2 61.5L1429.7 71.9L1436.5 82.9L1442.5 94.7L1447.4 107.1Z" fill="none" stroke="#2A3AB8" stroke-width="10" stroke-linejoin="round"/></svg>
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Caso real · Arapiraca – AL</span>
+      <h2>No mapa com régua, parece que está tudo coberto. A pé, não está.</h2>
+      <p class="lead" style="color:var(--muted-d)">Calculamos a distância de cada um dos 96.084 domicílios da cidade até a unidade mais próxima, pelos 2.137 km de ruas e caminhos. A diferença para a linha reta muda a decisão.</p>
+    </div>
+    <div class="versus">
+      <div class="vs-card"><small>Unidades Básicas de Saúde · 1 km</small>
+        <div class="vs-nums"><span class="vs-de">34.002</span><span class="vs-seta" aria-hidden="true">→</span><span class="vs-para">77.324</span></div>
+        <p>moradores longe de uma UBS. Medindo a pé, o número mais que dobra.</p></div>
+      <div class="vs-card"><small>Creches · 500 m</small>
+        <div class="vs-nums"><span class="vs-de">8.533</span><span class="vs-seta" aria-hidden="true">→</span><span class="vs-para">10.216</span></div>
+        <p>crianças de 0 a 3 anos sem creche por perto. Só 24% delas têm uma a até 500 m a pé.</p></div>
+      <div class="vs-card"><small>Pré-escola · 500 m</small>
+        <div class="vs-nums"><span class="vs-de">3.229</span><span class="vs-seta" aria-hidden="true">→</span><span class="vs-para">4.467</span></div>
+        <p>crianças de 4 e 5 anos, a faixa em que a matrícula é obrigatória por lei.</p></div>
+    </div>
+    <div class="barras">
+      <h3>Parcela da população atendida dentro do raio</h3>
+      <div class="b-leg"><span style="--c:#4B5BB8">Medindo em linha reta</span><span style="--c:var(--azul-200)">Medindo a pé pelas ruas</span></div>
+      <div id="barras" style="display:grid;gap:16px"></div>
+      <p class="fonte">Fontes: IBGE (Censo 2022 e CNEFE), INEP (Censo Escolar 2024), CNES e OpenStreetMap, processados pela Equicidade.</p>
+    </div>
+  </div>
+</section>
+
+<section class="sec white" id="entrega">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">O que sua equipe recebe</span>
+      <h2>Do diagnóstico ao terreno da próxima obra</h2>
+    </div>
+    <div class="grid">
+      <article class="card"><div class="card-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg></div><h3>Mapa de cobertura</h3><p>O raio de cada creche, escola e UBS, a pé ou em linha reta. Mude o raio e veja na hora quem fica de fora.</p></article>
+      <article class="card"><div class="card-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></div><h3>Ranking de bairros</h3><p>Os bairros com mais gente sem atendimento e o tempo médio de caminhada até a unidade mais próxima.</p></article>
+      <article class="card"><div class="card-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></div><h3>Simulador de nova unidade</h3><p>Marque um terreno e veja quantas famílias passam a ser atendidas. Arraste para comparar os terrenos disponíveis.</p></article>
+      <article class="card"><div class="card-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6"/><path d="M10 17h6"/></svg></div><h3>Relatório para o processo</h3><p>Diagnóstico em PDF com mapas e números por setor do IBGE, pronto para anexar ao Novo PAC, ao FNDE e aos planos municipais.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Por que se paga</span>
+      <h2>Uma creche aprovada vale mais que anos de assinatura</h2>
+      <p class="lead">Os programas federais pedem que o município mostre a demanda e justifique o local da obra. A Equicidade entrega essa justificativa com dado oficial, por setor censitário.</p>
+    </div>
+    <ol class="steps">
+      <li class="step"><span class="step-n">Semana 1</span><h3>Contratação</h3><p>Valores pensados para a dispensa de licitação. Sem pregão, sem meses de espera.</p></li>
+      <li class="step"><span class="step-n">Semana 2</span><h3>Sua cidade no mapa</h3><p>Processamos os dados públicos do município e conferimos com a equipe as escolas e unidades com endereço incerto.</p></li>
+      <li class="step"><span class="step-n">Semana 3</span><h3>Equipe treinada</h3><p>Duas horas de treinamento. A partir daí, a secretaria testa cenários e gera relatórios sozinha.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section class="sec white" id="orcamento">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Orçamento</span>
+      <h2>Um preço pelo tamanho da cidade</h2>
+      <p class="lead">Implantação paga uma vez e assinatura anual. Cada contrato libera um município, com acesso para toda a equipe.</p>
+    </div>
+    <div class="minha" id="minha"></div>
+    <h3 class="titulo-tabela">Tabela completa, por porte do município</h3>
+    <div class="planos" id="planos"></div>
+    <ul class="inclui">
+      <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Contas para toda a equipe da prefeitura</li>
+      <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Distância a pé pelas ruas reais</li>
+      <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Relatórios em PDF sem limite</li>
+      <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Atualização anual dos dados públicos</li>
+      <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Importação do cadastro do IPTU</li>
+      <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Suporte por WhatsApp</li>
+    </ul>
+
+    <div class="cta" style="margin-top:56px">
+      <svg class="rings" viewBox="0 0 1200 520" preserveAspectRatio="xMaxYMax slice" aria-hidden="true"><path d="M1474.3 470.0L1478.8 498.1L1480.1 526.6L1477.9 555.1L1472.2 583.1L1462.9 610.2L1450.3 635.8L1434.6 659.7L1416.1 681.4L1395.3 700.7L1372.6 717.6L1348.6 731.8L1323.7 743.7L1298.3 753.1L1273.0 760.6L1248.0 766.3L1223.6 770.6L1199.9 774.0L1177.1 776.8L1155.0 779.3L1133.6 781.9L1112.6 784.8L1091.9 788.0L1071.1 791.8L1050.0 795.8L1028.4 800.1L1006.0 804.3L982.7 808.2L958.6 811.2L933.5 813.1L907.8 813.4L881.5 811.7L855.0 807.8L828.6 801.3L802.9 792.0L778.2 780.0L754.9 765.1L733.5 747.6L714.3 727.6L697.7 705.4L683.9 681.4L672.9 656.0L664.8 629.5L659.6 602.5L657.1 575.3L657.1 548.2L659.2 521.5L663.2 495.4L668.7 470.0L675.4 445.4L683.0 421.7L691.2 398.6L700.0 376.2L709.0 354.3L718.4 332.6L728.1 311.2L738.2 290.0L748.9 268.8L760.3 247.7L772.7 226.8L786.3 206.3L801.1 186.2L817.5 167.0L835.4 148.9L855.0 132.2L876.1 117.3L898.6 104.4L922.3 93.9L947.1 85.9L972.6 80.7L998.4 78.2L1024.3 78.5L1050.0 81.4L1075.1 86.9L1099.4 94.5L1122.8 104.1L1145.1 115.3L1166.2 127.7L1186.3 141.0L1205.3 155.0L1223.6 169.4L1241.2 183.9L1258.4 198.5L1275.3 213.1L1292.3 227.7L1309.4 242.5L1326.7 257.7L1344.2 273.5L1361.8 290.0L1379.4 307.5L1396.8 326.4L1413.6 346.6L1429.4 368.4L1443.8 391.7L1456.3 416.5L1466.6 442.7Z" fill="none" stroke="#2A40D9" stroke-width="10" stroke-linejoin="round"/><path d="M1351.4 470.0L1354.7 490.0L1355.6 510.2L1354.1 530.5L1350.0 550.4L1343.4 569.6L1334.4 587.8L1323.3 604.8L1310.1 620.2L1295.4 633.9L1279.2 645.9L1262.1 656.0L1244.4 664.4L1226.4 671.2L1208.4 676.5L1190.7 680.5L1173.3 683.6L1156.5 686.0L1140.3 688.0L1124.6 689.8L1109.4 691.6L1094.5 693.7L1079.8 696.0L1065.0 698.6L1050.0 701.5L1034.6 704.6L1018.7 707.5L1002.2 710.3L985.0 712.4L967.2 713.8L948.9 714.0L930.3 712.8L911.4 710.0L892.7 705.4L874.4 698.8L856.8 690.2L840.3 679.7L825.1 667.2L811.5 653.0L799.7 637.2L789.9 620.2L782.1 602.1L776.3 583.4L772.6 564.2L770.8 544.8L770.8 525.5L772.3 506.6L775.1 488.0L779.0 470.0L783.8 452.6L789.2 435.7L795.1 419.3L801.3 403.4L807.7 387.8L814.4 372.4L821.3 357.2L828.5 342.1L836.0 327.0L844.2 312.1L853.0 297.2L862.6 282.6L873.2 268.4L884.8 254.7L897.5 241.8L911.4 230.0L926.4 219.4L942.4 210.2L959.3 202.8L976.9 197.1L995.0 193.4L1013.4 191.6L1031.8 191.8L1050.0 193.9L1067.8 197.8L1085.1 203.2L1101.7 210.0L1117.5 217.9L1132.6 226.8L1146.8 236.3L1160.4 246.2L1173.3 256.4L1185.8 266.7L1198.0 277.1L1210.1 287.4L1222.2 297.8L1234.3 308.4L1246.6 319.2L1259.0 330.3L1271.5 342.1L1284.1 354.6L1296.4 367.9L1308.3 382.3L1319.5 397.8L1329.8 414.3L1338.7 432.0L1346.0 450.6Z" fill="none" stroke="#3651FF" stroke-width="10" stroke-linejoin="round"/><path d="M1228.6 470.0L1230.6 481.8L1231.1 493.8L1230.2 505.8L1227.8 517.6L1223.9 529.0L1218.6 539.8L1211.9 549.9L1204.2 559.0L1195.4 567.1L1185.8 574.2L1175.7 580.3L1165.2 585.2L1154.6 589.2L1143.9 592.4L1133.4 594.8L1123.1 596.6L1113.1 598.0L1103.5 599.2L1094.2 600.2L1085.2 601.3L1076.4 602.5L1067.6 603.9L1058.9 605.5L1050.0 607.2L1040.9 609.0L1031.5 610.8L1021.7 612.4L1011.5 613.7L1001.0 614.5L990.1 614.6L979.0 613.9L967.9 612.2L956.8 609.5L946.0 605.6L935.5 600.5L925.7 594.3L916.7 586.9L908.7 578.4L901.7 569.1L895.8 559.0L891.2 548.3L887.8 537.2L885.6 525.8L884.6 514.3L884.5 502.9L885.4 491.7L887.1 480.7L889.4 470.0L892.3 459.7L895.5 449.7L898.9 440.0L902.6 430.5L906.4 421.3L910.4 412.2L914.5 403.2L918.7 394.2L923.2 385.3L928.0 376.4L933.2 367.6L938.9 358.9L945.2 350.5L952.1 342.4L959.7 334.8L967.9 327.8L976.8 321.5L986.2 316.1L996.2 311.6L1006.7 308.3L1017.4 306.1L1028.3 305.0L1039.2 305.2L1050.0 306.4L1060.6 308.7L1070.8 311.9L1080.6 315.9L1090.0 320.6L1098.9 325.9L1107.4 331.5L1115.4 337.4L1123.1 343.4L1130.5 349.5L1137.7 355.7L1144.9 361.8L1152.0 368.0L1159.2 374.2L1166.5 380.6L1173.9 387.2L1181.3 394.2L1188.7 401.6L1196.0 409.5L1203.1 418.0L1209.7 427.2L1215.8 437.0L1221.1 447.5L1225.4 458.5Z" fill="none" stroke="#5A72FF" stroke-width="10" stroke-linejoin="round"/></svg>
+      <div style="display:grid;gap:16px">
+        <span class="eyebrow" style="color:var(--azul-200)">Simule</span>
+        <h2>Quanto fica para o seu município</h2>
+        <p>Digite a população do Censo 2022. O cálculo mostra o primeiro ano completo e se ele cabe na dispensa de licitação.</p>
+        <div class="calc-box">
+          <label for="pop">População do município<input id="pop" type="number" min="1000" max="15000000" step="1000" value="234696"></label>
+          <label class="opcao" for="estudo"><input id="estudo" type="checkbox">Incluir um estudo de localização (ex.: terrenos das novas creches)</label>
+          <label class="opcao" for="piloto"><input id="piloto" type="checkbox">Município piloto: 50% de desconto na assinatura do 1º ano</label>
+        </div>
+      </div>
+      <div class="res" id="res" aria-live="polite"></div>
+    </div>
+
+    <div class="extras">
+      <article class="card"><h3>Estudo de localização</h3><p>Relatório técnico para uma decisão específica, como onde construir as creches de um programa federal. De R$ 8 mil a R$ 15 mil.</p></article>
+      <article class="card"><h3>Consórcios de municípios</h3><p>Cidades de um mesmo consórcio intermunicipal pagam menos por município. Fale com a gente.</p></article>
+      <article class="card"><h3>Mais de 300 mil habitantes</h3><p>Proposta sob medida, com cronograma e escopo próprios, normalmente por pregão.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="wrap">
+    <div class="cta">
+      <svg class="rings" viewBox="0 0 1200 520" preserveAspectRatio="xMaxYMax slice" aria-hidden="true"><path d="M1474.3 470.0L1478.8 498.1L1480.1 526.6L1477.9 555.1L1472.2 583.1L1462.9 610.2L1450.3 635.8L1434.6 659.7L1416.1 681.4L1395.3 700.7L1372.6 717.6L1348.6 731.8L1323.7 743.7L1298.3 753.1L1273.0 760.6L1248.0 766.3L1223.6 770.6L1199.9 774.0L1177.1 776.8L1155.0 779.3L1133.6 781.9L1112.6 784.8L1091.9 788.0L1071.1 791.8L1050.0 795.8L1028.4 800.1L1006.0 804.3L982.7 808.2L958.6 811.2L933.5 813.1L907.8 813.4L881.5 811.7L855.0 807.8L828.6 801.3L802.9 792.0L778.2 780.0L754.9 765.1L733.5 747.6L714.3 727.6L697.7 705.4L683.9 681.4L672.9 656.0L664.8 629.5L659.6 602.5L657.1 575.3L657.1 548.2L659.2 521.5L663.2 495.4L668.7 470.0L675.4 445.4L683.0 421.7L691.2 398.6L700.0 376.2L709.0 354.3L718.4 332.6L728.1 311.2L738.2 290.0L748.9 268.8L760.3 247.7L772.7 226.8L786.3 206.3L801.1 186.2L817.5 167.0L835.4 148.9L855.0 132.2L876.1 117.3L898.6 104.4L922.3 93.9L947.1 85.9L972.6 80.7L998.4 78.2L1024.3 78.5L1050.0 81.4L1075.1 86.9L1099.4 94.5L1122.8 104.1L1145.1 115.3L1166.2 127.7L1186.3 141.0L1205.3 155.0L1223.6 169.4L1241.2 183.9L1258.4 198.5L1275.3 213.1L1292.3 227.7L1309.4 242.5L1326.7 257.7L1344.2 273.5L1361.8 290.0L1379.4 307.5L1396.8 326.4L1413.6 346.6L1429.4 368.4L1443.8 391.7L1456.3 416.5L1466.6 442.7Z" fill="none" stroke="#2A40D9" stroke-width="10" stroke-linejoin="round"/><path d="M1351.4 470.0L1354.7 490.0L1355.6 510.2L1354.1 530.5L1350.0 550.4L1343.4 569.6L1334.4 587.8L1323.3 604.8L1310.1 620.2L1295.4 633.9L1279.2 645.9L1262.1 656.0L1244.4 664.4L1226.4 671.2L1208.4 676.5L1190.7 680.5L1173.3 683.6L1156.5 686.0L1140.3 688.0L1124.6 689.8L1109.4 691.6L1094.5 693.7L1079.8 696.0L1065.0 698.6L1050.0 701.5L1034.6 704.6L1018.7 707.5L1002.2 710.3L985.0 712.4L967.2 713.8L948.9 714.0L930.3 712.8L911.4 710.0L892.7 705.4L874.4 698.8L856.8 690.2L840.3 679.7L825.1 667.2L811.5 653.0L799.7 637.2L789.9 620.2L782.1 602.1L776.3 583.4L772.6 564.2L770.8 544.8L770.8 525.5L772.3 506.6L775.1 488.0L779.0 470.0L783.8 452.6L789.2 435.7L795.1 419.3L801.3 403.4L807.7 387.8L814.4 372.4L821.3 357.2L828.5 342.1L836.0 327.0L844.2 312.1L853.0 297.2L862.6 282.6L873.2 268.4L884.8 254.7L897.5 241.8L911.4 230.0L926.4 219.4L942.4 210.2L959.3 202.8L976.9 197.1L995.0 193.4L1013.4 191.6L1031.8 191.8L1050.0 193.9L1067.8 197.8L1085.1 203.2L1101.7 210.0L1117.5 217.9L1132.6 226.8L1146.8 236.3L1160.4 246.2L1173.3 256.4L1185.8 266.7L1198.0 277.1L1210.1 287.4L1222.2 297.8L1234.3 308.4L1246.6 319.2L1259.0 330.3L1271.5 342.1L1284.1 354.6L1296.4 367.9L1308.3 382.3L1319.5 397.8L1329.8 414.3L1338.7 432.0L1346.0 450.6Z" fill="none" stroke="#3651FF" stroke-width="10" stroke-linejoin="round"/><path d="M1228.6 470.0L1230.6 481.8L1231.1 493.8L1230.2 505.8L1227.8 517.6L1223.9 529.0L1218.6 539.8L1211.9 549.9L1204.2 559.0L1195.4 567.1L1185.8 574.2L1175.7 580.3L1165.2 585.2L1154.6 589.2L1143.9 592.4L1133.4 594.8L1123.1 596.6L1113.1 598.0L1103.5 599.2L1094.2 600.2L1085.2 601.3L1076.4 602.5L1067.6 603.9L1058.9 605.5L1050.0 607.2L1040.9 609.0L1031.5 610.8L1021.7 612.4L1011.5 613.7L1001.0 614.5L990.1 614.6L979.0 613.9L967.9 612.2L956.8 609.5L946.0 605.6L935.5 600.5L925.7 594.3L916.7 586.9L908.7 578.4L901.7 569.1L895.8 559.0L891.2 548.3L887.8 537.2L885.6 525.8L884.6 514.3L884.5 502.9L885.4 491.7L887.1 480.7L889.4 470.0L892.3 459.7L895.5 449.7L898.9 440.0L902.6 430.5L906.4 421.3L910.4 412.2L914.5 403.2L918.7 394.2L923.2 385.3L928.0 376.4L933.2 367.6L938.9 358.9L945.2 350.5L952.1 342.4L959.7 334.8L967.9 327.8L976.8 321.5L986.2 316.1L996.2 311.6L1006.7 308.3L1017.4 306.1L1028.3 305.0L1039.2 305.2L1050.0 306.4L1060.6 308.7L1070.8 311.9L1080.6 315.9L1090.0 320.6L1098.9 325.9L1107.4 331.5L1115.4 337.4L1123.1 343.4L1130.5 349.5L1137.7 355.7L1144.9 361.8L1152.0 368.0L1159.2 374.2L1166.5 380.6L1173.9 387.2L1181.3 394.2L1188.7 401.6L1196.0 409.5L1203.1 418.0L1209.7 427.2L1215.8 437.0L1221.1 447.5L1225.4 458.5Z" fill="none" stroke="#5A72FF" stroke-width="10" stroke-linejoin="round"/></svg>
+      <div style="display:grid;gap:16px">
+        <span class="eyebrow" style="color:var(--azul-200)">Demonstração</span>
+        <h2 id="p-cta">Veja o mapa da sua cidade numa conversa de 20 minutos</h2>
+        <p>Mostramos a ferramenta funcionando com Arapiraca e preparamos a proposta para o seu município.</p>
+      </div>
+      <div style="display:grid;gap:14px">
+        <p style="margin:0;font-weight:600">WhatsApp</p>
+        <div class="zap"><span class="tel" id="tel">(82) 98818-9617</span><button type="button" id="copiar">Copiar número</button></div>
+        <p style="margin:0;font-size:14px">equicidade.com.br</p>
+      </div>
+    </div>
+    <p class="letra-miuda">Valores de referência de novembro de 2026, sujeitos a proposta formal. O limite de dispensa de licitação para serviços (Lei 14.133/2021, art. 75, II) é atualizado todo ano por decreto; confira o valor vigente.</p>
+  </div>
+</section>
+
+<footer class="foot"><div class="wrap"><img src="/img/equicidade-horizontal-negativo.svg" alt="Equicidade" width="141" height="32"><ul><li>Mapa de cobertura de equipamentos públicos</li><li>equicidade.com.br</li></ul></div></footer>
+
+</div>
+<script src="/js/proposta.js"></script>
+</body>
+</html>

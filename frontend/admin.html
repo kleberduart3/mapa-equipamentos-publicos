@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Contas · Equicidade</title>
+  <title>Administração · Equicidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="img/favicon-32.png" sizes="32x32" type="image/png">
@@ -12,72 +12,175 @@
   <meta name="theme-color" content="#0D1450">
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link href="css/app.css" rel="stylesheet">
+  <link href="css/admin.css" rel="stylesheet">
 </head>
-<body>
-  <header class="topo" style="grid-template-columns:1fr auto">
-    <div class="marca">
-      <img class="logo" src="img/equicidade-horizontal.svg" alt="Equicidade" width="141" height="32"><span class="marca-sub">Contas</span>
-    </div>
-    <div class="acoes"><a class="btn sec" href="/" style="text-decoration:none">Voltar ao mapa</a></div>
+<body class="adm">
+  <header class="adm-topo">
+    <a class="adm-marca" href="/admin"><img src="img/equicidade-horizontal-negativo.svg" alt="Equicidade" width="141" height="32"><span>Administração</span></a>
+    <a class="adm-voltar" href="/">Abrir o mapa →</a>
   </header>
 
-  <main class="admin">
-    <section>
-      <h2>Nova conta</h2>
-      <form id="form-novo" novalidate>
-        <div class="linha-form">
-          <label class="campo-rot">Nome<input id="novo-nome" required maxlength="120"></label>
-          <label class="campo-rot">E-mail<input id="novo-email" type="email" required maxlength="254"></label>
-          <label class="campo-rot">Papel
-            <select id="novo-papel">
-              <option value="usuario">Usuário (só os municípios marcados)</option>
-              <option value="admin">Administrador (todos os municípios e contas)</option>
-            </select>
-          </label>
+  <div class="adm-corpo">
+    <nav class="adm-nav" aria-label="Seções da administração">
+      <a href="#painel" data-aba="painel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 7h6V4h-6z"/></svg>Painel</a>
+      <a href="#propostas" data-aba="propostas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg>Propostas</a>
+      <a href="#contas" data-aba="contas"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c.8-3.4 3.2-5 6-5s5.2 1.6 6 5M16 4.5a3.5 3.5 0 0 1 0 7M18 15c1.6.6 2.6 2.2 3 5"/></svg>Contas</a>
+      <a href="#municipios" data-aba="municipios"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>Municípios</a>
+      <a href="#atividade" data-aba="atividade"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Atividade</a>
+    </nav>
+
+    <main class="adm-main">
+      <!-- ================= PAINEL ================= -->
+      <section class="aba" id="aba-painel" hidden>
+        <div class="aba-topo">
+          <div><h1>Bom dia</h1><p class="sub" id="painel-data"></p></div>
+          <div class="aba-acoes">
+            <a class="btn" href="#propostas" data-ir="nova-proposta">Nova proposta</a>
+            <a class="btn sec" href="#contas" data-ir="nova-conta">Nova conta</a>
+          </div>
         </div>
-        <div id="novo-acessos-bloco">
-          <p class="nota">Municípios liberados: <b>consulta</b> vê o mapa e gera relatórios; <b>gestor</b> também envia dados da prefeitura.</p>
-          <div class="acessos-lista" id="novo-acessos"></div>
+        <div class="kpis-adm" id="kpis-adm"></div>
+        <div class="duas">
+          <div class="painel-bloco">
+            <h2>Propostas recentes</h2>
+            <ul class="lista-simples" id="painel-propostas"></ul>
+          </div>
+          <div class="painel-bloco">
+            <h2>Atividade recente</h2>
+            <ul class="lista-simples" id="painel-eventos"></ul>
+          </div>
         </div>
-        <p class="erro" id="erro-novo" role="alert"></p>
-        <button class="btn" type="submit">Criar conta e gerar link</button>
-      </form>
-      <div id="link-novo" hidden></div>
-    </section>
+      </section>
 
-    <section>
-      <h2>Contas</h2>
-      <div class="tabela-rolagem">
-        <table class="tabela">
-          <thead><tr><th>Nome / e-mail</th><th>Papel</th><th>Municípios</th><th>Situação</th><th>Último acesso</th><th></th></tr></thead>
-          <tbody id="usuarios"></tbody>
-        </table>
-      </div>
-      <div id="link-usuario" hidden></div>
-    </section>
+      <!-- ================= PROPOSTAS ================= -->
+      <section class="aba" id="aba-propostas" hidden>
+        <div class="aba-topo">
+          <div><h1>Propostas</h1><p class="sub">Página de venda no seu domínio, aberta com link e código de acesso.</p></div>
+          <div class="aba-acoes"><button type="button" class="btn" id="btn-nova-proposta">Nova proposta</button></div>
+        </div>
 
-    <section>
-      <h2>Municípios</h2>
-      <div class="tabela-rolagem">
-        <table class="tabela">
-          <thead><tr><th>Município</th><th>Código IBGE</th><th>Dados</th><th>Distância a pé</th></tr></thead>
-          <tbody id="municipios"></tbody>
-        </table>
-      </div>
-      <p class="nota">Para incluir um município, rode no servidor:
-        <code>python backend/scripts/processar_municipio.py CÓDIGO_IBGE</code>.</p>
-    </section>
+        <div class="painel-bloco" id="bloco-nova-proposta" hidden>
+          <h2>Nova proposta</h2>
+          <form id="form-proposta" class="form-proposta" novalidate>
+            <div class="campos">
+              <label class="campo-rot larga">Cliente<input id="pr-cliente" required maxlength="120" placeholder="Prefeitura de Palmeira dos Índios"></label>
+              <label class="campo-rot">Município<input id="pr-municipio" required maxlength="80" placeholder="Palmeira dos Índios"></label>
+              <label class="campo-rot curta">UF<input id="pr-uf" required maxlength="2" value="AL"></label>
+              <label class="campo-rot">População (Censo 2022)<input id="pr-pop" type="number" required min="500" max="15000000" step="1" placeholder="71574"></label>
+              <label class="campo-rot">Contato (quem recebe)<input id="pr-contato" maxlength="120" placeholder="Maria Silva, Sec. de Educação"></label>
+              <label class="campo-rot">Desconto no 1º ano (%)<input id="pr-desc" type="number" min="0" max="60" step="5" value="0"></label>
+              <label class="campo-rot">Validade (dias)<input id="pr-val" type="number" min="1" max="365" value="30"></label>
+              <label class="campo-check"><input type="checkbox" id="pr-estudo"> Incluir estudo de localização</label>
+              <label class="campo-rot larga">Observação na página (opcional)<textarea id="pr-obs" maxlength="1000" rows="2"
+                placeholder="Ex.: Condição válida para contratação até março, com treinamento presencial incluído."></textarea></label>
+            </div>
+            <aside class="previa" id="pr-previa" aria-live="polite"></aside>
+            <p class="erro" id="erro-proposta" role="alert"></p>
+            <div class="form-acoes">
+              <button type="button" class="btn sec" id="btn-cancelar-proposta">Cancelar</button>
+              <button class="btn" type="submit">Gerar link e código</button>
+            </div>
+          </form>
+        </div>
 
-    <section>
-      <h2>Registro de atividade (últimos 200)</h2>
-      <div class="tabela-rolagem">
-        <table class="tabela">
-          <thead><tr><th>Quando</th><th>Ação</th><th>Conta</th><th>Detalhe</th><th>IP</th></tr></thead>
-          <tbody id="eventos"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+        <div class="entrega" id="entrega-proposta" hidden></div>
+
+        <div class="painel-bloco">
+          <div class="tabela-rolagem">
+            <table class="tabela">
+              <thead><tr><th>Cliente</th><th>1º ano</th><th>Situação</th><th>Aberturas</th><th>Validade</th><th></th></tr></thead>
+              <tbody id="propostas"></tbody>
+            </table>
+          </div>
+          <p class="nota" id="propostas-vazio" hidden>Nenhuma proposta ainda. Clique em <b>Nova proposta</b> para gerar a primeira.</p>
+        </div>
+      </section>
+
+      <!-- ================= CONTAS ================= -->
+      <section class="aba" id="aba-contas" hidden>
+        <div class="aba-topo">
+          <div><h1>Contas</h1><p class="sub">Quem entra na ferramenta e quais municípios cada um vê.</p></div>
+          <div class="aba-acoes"><button type="button" class="btn" id="btn-nova-conta">Nova conta</button></div>
+        </div>
+
+        <div class="painel-bloco" id="bloco-nova-conta" hidden>
+          <h2>Nova conta</h2>
+          <form id="form-novo" novalidate>
+            <div class="linha-form">
+              <label class="campo-rot">Nome<input id="novo-nome" required maxlength="120"></label>
+              <label class="campo-rot">E-mail<input id="novo-email" type="email" required maxlength="254"></label>
+              <label class="campo-rot">Papel
+                <select id="novo-papel">
+                  <option value="usuario">Usuário (só os municípios marcados)</option>
+                  <option value="admin">Administrador (todos os municípios e contas)</option>
+                </select>
+              </label>
+            </div>
+            <div id="novo-acessos-bloco">
+              <p class="nota">Municípios liberados: <b>consulta</b> vê o mapa e gera relatórios; <b>gestor</b> também envia dados da prefeitura.</p>
+              <div class="acessos-lista" id="novo-acessos"></div>
+            </div>
+            <p class="erro" id="erro-novo" role="alert"></p>
+            <div class="form-acoes">
+              <button type="button" class="btn sec" id="btn-cancelar-conta">Cancelar</button>
+              <button class="btn" type="submit">Criar conta e gerar link</button>
+            </div>
+          </form>
+        </div>
+        <div id="link-novo" class="entrega" hidden></div>
+
+        <div class="painel-bloco">
+          <div class="filtro"><input type="search" id="filtro-contas" placeholder="Buscar por nome, e-mail ou município" aria-label="Buscar contas"></div>
+          <div class="tabela-rolagem">
+            <table class="tabela">
+              <thead><tr><th>Nome / e-mail</th><th>Papel</th><th>Municípios</th><th>Situação</th><th>Último acesso</th><th></th></tr></thead>
+              <tbody id="usuarios"></tbody>
+            </table>
+          </div>
+          <div id="link-usuario" class="entrega" hidden></div>
+        </div>
+      </section>
+
+      <!-- ================= MUNICÍPIOS ================= -->
+      <section class="aba" id="aba-municipios" hidden>
+        <div class="aba-topo">
+          <div><h1>Municípios</h1><p class="sub">Cidades processadas no servidor. Cada venda libera uma cidade.</p></div>
+        </div>
+        <div class="painel-bloco">
+          <div class="tabela-rolagem">
+            <table class="tabela">
+              <thead><tr><th>Município</th><th>Código IBGE</th><th>Dados</th><th>Distância a pé</th><th>Contas com acesso</th></tr></thead>
+              <tbody id="municipios"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="painel-bloco passo-a-passo">
+          <h2>Liberar uma cidade depois da compra</h2>
+          <ol>
+            <li>No seu computador, rode <code>bash deploy/liberar_cidade.sh CÓDIGO_IBGE</code>. Leva cerca de 1 hora.</li>
+            <li>Acompanhe com <code>bash deploy/liberar_cidade.sh CÓDIGO_IBGE status</code> e leia a checagem dos dados.</li>
+            <li>Volte aqui, em <a href="#contas">Contas</a>, crie a conta da prefeitura e marque o município.</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ================= ATIVIDADE ================= -->
+      <section class="aba" id="aba-atividade" hidden>
+        <div class="aba-topo">
+          <div><h1>Atividade</h1><p class="sub">Os últimos 500 registros: logins, contas, propostas, relatórios.</p></div>
+        </div>
+        <div class="painel-bloco">
+          <div class="filtro"><input type="search" id="filtro-eventos" placeholder="Filtrar por ação, conta, detalhe ou IP" aria-label="Filtrar atividade"></div>
+          <div class="tabela-rolagem">
+            <table class="tabela">
+              <thead><tr><th>Quando</th><th>Ação</th><th>Conta</th><th>Detalhe</th><th>IP</th></tr></thead>
+              <tbody id="eventos"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <dialog id="dlg-editar">
     <form class="dlg" id="form-editar" novalidate>
