@@ -6,6 +6,29 @@ O site roda em dois containers:
 
 Só o Caddy fica exposto. O app não tem porta aberta para fora.
 
+## Caminho rápido: um comando
+
+Com a VPS criada (Ubuntu 24.04, chave `~/.ssh/equicidade_vps.pub` cadastrada para o root) e o registro DNS `mapa`
+apontando para o IP, rode **neste computador** (Git Bash):
+
+```bash
+bash deploy/instalar_vps.sh IP_DA_VPS seu@email "Seu Nome"
+```
+
+O script faz tudo:
+- a segurança do servidor: firewall, SSH só por chave, fail2ban, atualizações automáticas e swap;
+- instala o Docker;
+- clona o código e envia os dados dos municípios;
+- cria o `.env`;
+- sobe a aplicação com HTTPS;
+- instala a cópia de segurança diária;
+- cria o administrador e mostra o link de senha.
+
+Pode rodar de novo para atualizar. As seções abaixo explicam cada passo, para quem preferir fazer à mão.
+
+Provedor recomendado (13/11/2026): **Hostinger VPS KVM 2** (2 vCPU, 8 GB, 100 GB NVMe, datacenter no Brasil). Custa
+R$ 42,99/mês no plano de 24 meses e renova a R$ 77,99/mês.
+
 ## 1. Servidor
 
 **Máquina.** Uma VPS com **Ubuntu 24.04**, 4 vCPU e **8 GB de RAM**. Cada município carregado ocupa cerca de 1 GB
