@@ -193,3 +193,34 @@ dialog { border: 0; border-radius: 12px; box-shadow: var(--sombra); padding: 0; 
   .topo { grid-template-columns: 1fr auto; height: auto; padding: 8px 16px; }
   .topo .seletor { grid-column: 1 / -1; order: 3; }
 }
+
+/* Tempo a pé ao lado do raio */
+.raio-min { font-size: 12px; color: var(--texto-2); margin: -2px 0 2px; }
+
+/* Ranking de bairros */
+.ranking { list-style: none; margin: 8px 0 0; padding: 0; counter-reset: rk; }
+.ranking li { counter-increment: rk; }
+.ranking-item { width: 100%; display: grid; grid-template-columns: 22px 1fr auto; column-gap: 8px; align-items: baseline;
+  text-align: left; font: inherit; color: var(--texto); background: none; border: 0; border-bottom: 1px solid var(--borda);
+  padding: 8px 2px; cursor: pointer; min-height: 44px; }
+.ranking-item::before { content: counter(rk); grid-row: 1 / span 2; font-family: var(--mono); font-size: 12px; color: var(--texto-2); }
+.ranking-item:hover .ranking-nome { color: var(--primaria); }
+.ranking-nome { font-weight: 600; }
+.ranking-num { font-family: var(--mono); font-weight: 600; color: var(--deficit); }
+.ranking-sub { grid-column: 2 / span 2; font-size: 12px; color: var(--texto-2); line-height: 1.35; }
+.acoes-ranking { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.btn-peq { padding: 6px 10px; font-size: 12px; min-height: 32px; }
+
+/* Simulador */
+.campo-compacto { margin: 0 0 10px; font-size: 13px; }
+#btn-simular { width: 100%; min-height: 44px; }
+.sim-resultado { margin-top: 12px; background: var(--primaria-clara); border-radius: var(--raio); padding: 12px 14px; font-size: 13px; }
+.sim-resultado p { margin: 4px 0 8px; line-height: 1.45; }
+.sim-resultado dl { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; margin: 0 0 6px; }
+.sim-resultado dt { color: var(--texto-2); }
+.sim-resultado dd { margin: 0; font-family: var(--mono); font-weight: 600; text-align: right; }
+.sim-num { font-family: var(--mono); font-size: 30px; font-weight: 600; color: var(--primaria); line-height: 1.1; }
+#btn-sim-limpar { margin-top: 8px; }
+.sim-marcador { width: 26px; height: 26px; border-radius: 50%; background: var(--primaria); border: 3px solid #fff;
+  box-shadow: 0 0 0 2px var(--primaria), var(--sombra); cursor: grab; position: relative; }
+.sim-marcador::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--coral); }

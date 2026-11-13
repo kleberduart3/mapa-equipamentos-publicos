@@ -24,6 +24,10 @@ fator_raio_rural: 3.0           # a revisar
 # O mapa e o relatório permitem trocar; este é o modo que abre por padrão.
 distancia_padrao: rede          # decisão de 12/11/2026: abrir a pé
 
+# Velocidade de caminhada para converter distância em tempo a pé (80 m/min = 4,8 km/h).
+# Referência usual de planejamento para adultos; crianças e idosos andam mais devagar.
+velocidade_caminhada_m_min: 80   # a revisar
+
 # Campos de cada equipamento:
 #   raio_m         raio de atendimento (zona urbana)
 #   faixa_demanda  coluna de população usada como demanda (ver setores.parquet)

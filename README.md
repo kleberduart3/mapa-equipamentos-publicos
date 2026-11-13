@@ -37,6 +37,13 @@ mapa onde há gente sem atendimento. Municípios processados: **Arapiraca/AL** (
 - **Raio por tipo:** cada tipo tem seu controle de raio, e cobertura, déficit e sugestões são recalculados na hora.
 - **Painel e legenda:** população, gente sem cobertura e % coberta por tipo; a legenda mostra o raio atual de cada tipo.
 - **Relatório PDF:** usa os raios da tela e leva cerca de 40 s; um de cada vez no servidor.
+- **Ranking de bairros:** os bairros com mais gente fora do raio, com o tempo médio a pé até a unidade mais próxima.
+  Clicar num bairro aproxima o mapa; a lista sai em planilha CSV.
+- **Setores do IBGE:** o déficit pode ser visto por setor censitário em vez de hexágonos. Clicar numa área mostra os
+  números dela.
+- **Simulador de nova unidade:** marque um ponto no mapa e veja quantas pessoas da faixa passariam a ter o equipamento
+  no raio e como a cobertura do município muda. Arraste o marcador para comparar terrenos.
+- **Tempo a pé:** cada raio aparece também em minutos (80 m por minuto, ajustável em `velocidade_caminhada_m_min`).
 - **Upload do IPTU** (só gestor): aceita CSV com lat/long, GeoPackage, GeoJSON ou shapefile. Hoje só recebe e valida.
 
 > Os mosaicos de tile.openstreetmap.org servem para desenvolvimento e demonstração. Para uso em produção

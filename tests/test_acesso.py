@@ -56,6 +56,9 @@ def test_sem_login_tudo_fechado(app):
     assert app.get("/api/municipios").status_code == 401
     assert app.get("/api/2700300/config").status_code == 401
     assert app.get("/api/2700300/cobertura?tipo=creche&raio=500").status_code == 401
+    assert app.get("/api/2700300/ranking?tipo=creche&raio=500").status_code == 401
+    assert app.get("/api/2700300/setores?tipo=creche&raio=500").status_code == 401
+    assert app.get("/api/2700300/simular?tipo=creche&raio=500&lon=-36.6&lat=-9.7").status_code == 401
     assert app.get("/index.html").status_code == 404          # a página do mapa não vaza como estático
     assert app.get("/docs").status_code == 404
     assert app.get("/entrar").status_code == 200

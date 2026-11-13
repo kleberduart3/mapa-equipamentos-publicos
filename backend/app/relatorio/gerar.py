@@ -21,6 +21,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from markupsafe import Markup
 
 from ..analise import cobertura as cob
+from .. import servicos
 from ..analise.contexto import Base, base
 from ..estilo import ESTILO, UNIDADE
 from ..ingestao import inep
@@ -80,6 +81,10 @@ def analisar(b: Base, raios: dict[str, int] | None = None, modo: str = "reta") -
             "pop_desc": r.pop_faixa[~r.coberto].sum(), "dem": r.demanda.sum(),
             "sem_cob": r.sem_cobertura.sum(), "def_cap": r.deficit_cap.sum(),
             "sens": {"0.5": sens[0.5], "1": cob.pct_coberto(r), "1.5": sens[1.5]},
+            "ranking": servicos.ranking(b.m.cod, t, cfg["raio_m"], modo)["bairros"][:6],
+            "raio_min": round(cfg["raio_m"] / servicos.velocidade(b.m.cod)),
+            "tempo_medio": servicos._tempo_medio(servicos._dist_proxima(b.m.cod, t, modo), r.pop_faixa,
+                                                 servicos.velocidade(b.m.cod)),
         }
         cols.update(cob.colunas_ponto(r))
     tab = pd.concat([b.pts[["h3"]].reset_index(drop=True), pd.DataFrame(cols)], axis=1)

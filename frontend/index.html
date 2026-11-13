@@ -47,8 +47,29 @@
       </section>
       <section>
         <h2>Mostrar no mapa</h2>
-        <select id="sel-deficit" class="campo"></select>
+        <select id="sel-deficit" class="campo" aria-label="O que mostrar no mapa"></select>
+        <div class="segmentado" id="unid-mapa" role="radiogroup" aria-label="Unidade do mapa de déficit">
+          <label><input type="radio" name="unid" value="hex" checked><span>Hexágonos</span></label>
+          <label><input type="radio" name="unid" value="setor"><span>Setores do IBGE</span></label>
+        </div>
         <p class="nota" id="nota-deficit"></p>
+      </section>
+      <section id="sec-ranking">
+        <h2>Bairros com mais gente fora do raio</h2>
+        <p class="nota" id="ranking-titulo"></p>
+        <ol class="ranking" id="ranking"></ol>
+        <div class="acoes-ranking">
+          <button type="button" class="btn sec btn-peq" id="btn-ranking-todos" aria-expanded="false">Ver todos</button>
+          <button type="button" class="btn sec btn-peq" id="btn-ranking-csv">Baixar planilha (CSV)</button>
+        </div>
+      </section>
+      <section id="sec-simular">
+        <h2>Simular nova unidade</h2>
+        <label class="campo-rot campo-compacto">Tipo de equipamento<select id="sim-tipo" class="campo"></select></label>
+        <button type="button" class="btn" id="btn-simular">Escolher o local no mapa</button>
+        <p class="nota" id="sim-instrucao" hidden>Clique no mapa onde ficaria a nova unidade. Depois, arraste o marcador para comparar outros terrenos.</p>
+        <div class="sim-resultado" id="sim-resultado" aria-live="polite" hidden></div>
+        <button type="button" class="btn sec btn-peq" id="btn-sim-limpar" hidden>Limpar simulação</button>
       </section>
       <section>
         <h2>Raio de atendimento</h2>

@@ -144,6 +144,42 @@ def areas(cod: str, tipo: str = Query(..., max_length=40), raio: int = RAIO, _=D
     return JSONResponse(servicos.areas(cod, tipo, int(raio)))
 
 
+@app.get("/api/{cod}/ranking")
+def ranking(cod: str, tipo: str = Query(..., max_length=40), raio: int = RAIO, modo: str = MODO,
+            _=Depends(ver_municipio)):
+    """Bairros ordenados pela população da faixa fora do raio de qualquer equipamento."""
+    servicos.checa_tipo(cod, tipo)
+    _medidor(cod, modo)
+    return JSONResponse(servicos.ranking(cod, tipo, int(raio), modo))
+
+
+@app.get("/api/{cod}/setores")
+def setores(cod: str, tipo: str = Query(..., max_length=40), raio: int = RAIO, modo: str = MODO,
+            _=Depends(ver_municipio)):
+    """Déficit por setor censitário do IBGE (alternativa aos hexágonos)."""
+    servicos.checa_tipo(cod, tipo)
+    _medidor(cod, modo)
+    return JSONResponse(servicos.setores(cod, tipo, int(raio), modo))
+
+
+_limite_simulacao = LimiteTaxa(120, 60)
+
+
+@app.get("/api/{cod}/simular")
+def simular(cod: str, request: Request, tipo: str = Query(..., max_length=40), raio: int = RAIO,
+            modo: str = MODO, lon: float = Query(..., ge=-75, le=-28), lat: float = Query(..., ge=-35, le=6),
+            acesso=Depends(ver_municipio)):
+    """Quantas pessoas um equipamento novo naquele ponto passaria a atender."""
+    if not _limite_simulacao.permitir(f"u{acesso[0].id}"):
+        raise HTTPException(429, "Muitas simulações seguidas. Aguarde um minuto.")
+    servicos.checa_tipo(cod, tipo)
+    _medidor(cod, modo)
+    try:
+        return JSONResponse(servicos.simular(cod, tipo, int(raio), modo, lon, lat))
+    except servicos.ForaDoMunicipio:
+        raise HTTPException(400, "Escolha um ponto dentro do município.") from None
+
+
 @app.get("/api/{cod}/indicadores")
 def indicadores(cod: str, _=Depends(ver_municipio)):
     return servicos.indicadores(cod)

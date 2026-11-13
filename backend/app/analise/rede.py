@@ -121,6 +121,34 @@ class Rede:
         return np.concatenate(II), np.concatenate(JJ), np.concatenate(DD), np.concatenate(RETA)
 
     # ------------------------------------------------------------------ #
+    def distancia_mais_proxima(self, lig_pts: Ligacao, xy_alvo: np.ndarray, limite: float = 30_000) -> np.ndarray:
+        """Distância a pé de cada ponto até o destino MAIS PRÓXIMO, num Dijkstra só:
+        um nó virtual ligado às duas pontas da via de cada destino (com o trecho
+        até elas) vira a origem. Sem caminho até `limite` metros: inf."""
+        from scipy.sparse import coo_matrix
+
+        la = self.ligar(xy_alvo)
+        n = self.n
+        # pesos do nó virtual: o menor trecho até cada nó (vários destinos podem dividir um nó)
+        nos = np.r_[la.u, la.v]
+        pes = np.r_[la.a, la.b] + 1e-6           # > 0: a csgraph ignora arestas de peso zero
+        ordem = np.lexsort((pes, nos))
+        nos, pes = nos[ordem], pes[ordem]
+        primeiro = np.r_[True, nos[1:] != nos[:-1]]
+        nos, pes = nos[primeiro], pes[primeiro]
+        g = self.G.tocoo()
+        G2 = coo_matrix((np.r_[g.data, pes], (np.r_[g.row, np.full(len(nos), n)], np.r_[g.col, nos])),
+                        shape=(n + 1, n + 1)).tocsr()
+        D = dijkstra(G2, directed=True, indices=n, limit=limite)
+        d = np.minimum(lig_pts.a + D[lig_pts.u], lig_pts.b + D[lig_pts.v])
+        # quem mora na mesma via de um destino pode ir direto, sem passar pelas pontas
+        for j in range(len(xy_alvo)):
+            mesma = np.flatnonzero(lig_pts.aresta == la.aresta[j])
+            if len(mesma):
+                direto = lig_pts.s[mesma] + np.abs(lig_pts.pos[mesma] - la.pos[j]) + la.s[j]
+                d[mesma] = np.minimum(d[mesma], direto)
+        return d
+
     def areas_servico(self, xy_alvo: np.ndarray, raios: np.ndarray, buffer_m: float = 40) -> list:
         """Polígono de alcance a pé de cada destino: as vias alcançáveis dentro
         do raio, com uma faixa de `buffer_m` de cada lado (os lotes de frente)."""

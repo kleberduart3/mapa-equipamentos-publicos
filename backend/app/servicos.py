@@ -62,6 +62,7 @@ def config(cod: str) -> dict:
                  "unidade": UNIDADE.get(t, "pessoas"), "redes": c.get("redes", ["Municipal"])}
     return {"municipio": b.m.info(), "fator_raio_rural": b.fr, "tipos": ts,
             "bbox": [float(v) for v in lim], "tem_rede": b.tem_rede,
+            "velocidade_caminhada_m_min": velocidade(cod),
             "distancia_padrao": P.get("distancia_padrao", "reta") if b.tem_rede else "reta"}
 
 
@@ -110,19 +111,61 @@ def equipamentos(cod: str) -> dict:
     return _fc(feats)
 
 
+def velocidade(cod: str) -> float:
+    """Velocidade de caminhada (m/min) usada para converter distância em tempo."""
+    return float(municipio(cod).P.get("velocidade_caminhada_m_min", 80))
+
+
+@lru_cache(maxsize=128)
+def _resultado(cod: str, t: str, raio: int, modo: str):
+    """Cobertura de um tipo com um raio e um modo (base de cobertura, ranking, setores e simulador)."""
+    checa_tipo(cod, t)
+    b = base(cod)
+    cfg = {**b.P["equipamentos"][t], "raio_m": raio}
+    fac, sem = cob.ofertas(t, cfg, b.escolas, b.ubs)
+    return cob.calcular(t, cfg, b.pts, fac, sem, b.fr, tree=b.tree, medidor=b.medidor(modo)), fac
+
+
+@lru_cache(maxsize=32)
+def _dist_proxima(cod: str, t: str, modo: str) -> np.ndarray:
+    """Distância (m) de cada moradia até o equipamento do tipo mais próximo, em linha
+    reta ou a pé. Não depende do raio. Sem equipamento ou sem caminho: inf."""
+    from scipy.spatial import cKDTree
+
+    b = base(cod)
+    fac, _ = cob.ofertas(t, b.P["equipamentos"][t], b.escolas, b.ubs)
+    if not len(fac):
+        return np.full(len(b.pts), np.inf)
+    xy_f = np.column_stack([fac.geometry.x, fac.geometry.y])
+    if modo == "rede":
+        md = b.medidor("rede")
+        return md.rede.distancia_mais_proxima(md.lig, xy_f)
+    return cKDTree(xy_f).query(b.xy)[0]
+
+
+def _tempo_medio(dist: np.ndarray, peso: np.ndarray, vel: float) -> float | None:
+    """Tempo médio a pé (min), ponderado pela população da faixa; sem caminho conta como 60 min."""
+    if peso.sum() <= 0:
+        return None
+    minutos = np.minimum(dist / vel, 60)
+    return round(float((minutos * peso).sum() / peso.sum()), 1)
+
+
 @lru_cache(maxsize=256)
 def cobertura(cod: str, t: str, raio: int, modo: str = "reta") -> dict:
-    checa_tipo(cod, t)
     b = base(cod)
     P = b.P
     md = b.medidor(modo)
-    cfg = {**P["equipamentos"][t], "raio_m": raio}
-    fac, sem = cob.ofertas(t, cfg, b.escolas, b.ubs)
-    r = cob.calcular(t, cfg, b.pts, fac, sem, b.fr, tree=b.tree, medidor=md)
+    r, fac = _resultado(cod, t, raio, modo)
+    sem = r.sem_coord
+    vel = velocidade(cod)
+    dist = _dist_proxima(cod, t, modo)
+    minutos = np.minimum(dist / vel, 60)
 
     # déficit por hexágono
     df = pd.DataFrame({"h3": b.pts["h3"], "sem_cob": r.sem_cobertura, "def_cap": r.deficit_cap,
-                       "pop_desc": np.where(r.coberto, 0, r.pop_faixa)})
+                       "pop_desc": np.where(r.coberto, 0, r.pop_faixa),
+                       "pop": r.pop_faixa, "min_x_pop": minutos * r.pop_faixa})
     g = df.groupby("h3").sum()
     g["deficit"] = g["sem_cob"] + g["def_cap"]
     g = g[g["deficit"] > 0.5]
@@ -130,7 +173,8 @@ def cobertura(cod: str, t: str, raio: int, modo: str = "reta") -> dict:
               "properties": {"h3": h, "deficit": round(float(v["deficit"]), 1),
                              "sem_cobertura": round(float(v["sem_cob"]), 1),
                              "deficit_capacidade": round(float(v["def_cap"]), 1),
-                             "pop_descoberta": round(float(v["pop_desc"]), 1)},
+                             "pop_descoberta": round(float(v["pop_desc"]), 1),
+                             "tempo_medio_min": round(float(v["min_x_pop"] / v["pop"]), 1) if v["pop"] > 0 else None},
               "geometry": {"type": "Polygon", "coordinates": [b.hex_poly[h] + [b.hex_poly[h][0]]]}}
              for h, v in g.iterrows()]
 
@@ -161,7 +205,123 @@ def cobertura(cod: str, t: str, raio: int, modo: str = "reta") -> dict:
         "deficit_capacidade": round(float(r.deficit_cap.sum())),
         "equipamentos": int(len(fac)),
     }
-    return {"indicadores": ind, "hex": _fc(hexes), "radar": _fc(radar)}
+    pf = r.pop_faixa
+    acesso = {
+        "velocidade_m_min": vel,
+        "tempo_medio_min": _tempo_medio(dist, pf, vel),
+        "pct_ate_15min": round(float(100 * pf[minutos <= 15].sum() / max(pf.sum(), 1)), 1),
+        "raio_em_minutos": round(raio / vel, 1),
+    }
+    return {"indicadores": ind, "acesso": acesso, "hex": _fc(hexes), "radar": _fc(radar)}
+
+
+def _agrupar(cod: str, t: str, raio: int, modo: str, chave: np.ndarray) -> pd.DataFrame:
+    """Indicadores somados por grupo de moradias (bairro ou setor)."""
+    b = base(cod)
+    r, _ = _resultado(cod, t, raio, modo)
+    vel = velocidade(cod)
+    minutos = np.minimum(_dist_proxima(cod, t, modo) / vel, 60)
+    df = pd.DataFrame({"g": chave, "pop": r.pop_faixa, "fora": np.where(r.coberto, 0, r.pop_faixa),
+                       "sem_cob": r.sem_cobertura, "def_cap": r.deficit_cap, "min_x_pop": minutos * r.pop_faixa,
+                       "rural": b.pts["rural"].to_numpy(), "lon": b.lon, "lat": b.lat})
+    g = df.groupby("g").agg(pop=("pop", "sum"), fora=("fora", "sum"), sem_cob=("sem_cob", "sum"),
+                            def_cap=("def_cap", "sum"), min_x_pop=("min_x_pop", "sum"), rural=("rural", "mean"),
+                            lon0=("lon", "min"), lat0=("lat", "min"), lon1=("lon", "max"), lat1=("lat", "max"))
+    g["pct_fora"] = np.where(g["pop"] > 0, 100 * g["fora"] / g["pop"], 0)
+    g["tempo_medio_min"] = np.where(g["pop"] > 0, g["min_x_pop"] / g["pop"].where(g["pop"] > 0, 1), np.nan)
+    g["deficit"] = g["sem_cob"] + g["def_cap"]
+    return g
+
+
+@lru_cache(maxsize=64)
+def ranking(cod: str, t: str, raio: int, modo: str = "reta") -> dict:
+    """Bairros ordenados pela população da faixa fora do raio de qualquer equipamento."""
+    b = base(cod)
+    g = _agrupar(cod, t, raio, modo, b.pts["bairro"].to_numpy())
+    g = g[g["pop"] >= 0.5].sort_values(["fora", "deficit"], ascending=False)
+    linhas = [{"bairro": nome, "pop_faixa": round(float(v["pop"])), "pop_fora": round(float(v["fora"])),
+               "pct_fora": round(float(v["pct_fora"]), 1), "deficit_capacidade": round(float(v["def_cap"])),
+               "demanda_nao_resolvida": round(float(v["deficit"])),
+               "tempo_medio_min": None if np.isnan(v["tempo_medio_min"]) else round(float(v["tempo_medio_min"]), 1),
+               "rural": bool(v["rural"] > 0.5),
+               "bbox": [round(float(v[k]), 5) for k in ("lon0", "lat0", "lon1", "lat1")]}
+              for nome, v in g.iterrows()]
+    return {"tipo": t, "raio_m": raio, "modo": modo, "unidade": UNIDADE.get(t, "pessoas"),
+            "total_fora": round(float(g["fora"].sum())), "bairros": linhas}
+
+
+@lru_cache(maxsize=4)
+def _setores_geo(cod: str) -> dict:
+    """Polígono de cada setor em WGS84 (simplificado para o mapa)."""
+    s = base(cod).setores[["CD_SETOR", "geometry"]].to_crs(WGS84)
+    s["geometry"] = s.geometry.simplify(0.00003)
+    return {cd: mapping(geo) for cd, geo in zip(s["CD_SETOR"], s.geometry)}
+
+
+@lru_cache(maxsize=64)
+def setores(cod: str, t: str, raio: int, modo: str = "reta") -> dict:
+    """Déficit por setor censitário (a mesma conta dos hexágonos, na malha do IBGE)."""
+    b = base(cod)
+    g = _agrupar(cod, t, raio, modo, b.pts["CD_SETOR"].to_numpy())
+    geo = _setores_geo(cod)
+    feats = []
+    for cd, v in g.iterrows():
+        if cd not in geo or v["pop"] < 0.5:
+            continue
+        feats.append({"type": "Feature", "properties": {
+            "setor": cd, "bairro": b.setor_bairro.get(cd, "Sem bairro"),
+            "deficit": round(float(v["deficit"]), 1), "pop_faixa": round(float(v["pop"]), 1),
+            "pop_descoberta": round(float(v["fora"]), 1), "pct_fora": round(float(v["pct_fora"]), 1),
+            "deficit_capacidade": round(float(v["def_cap"]), 1),
+            "tempo_medio_min": None if np.isnan(v["tempo_medio_min"]) else round(float(v["tempo_medio_min"]), 1)},
+            "geometry": geo[cd]})
+    return _fc(feats)
+
+
+class ForaDoMunicipio(ValueError):
+    pass
+
+
+def simular(cod: str, t: str, raio: int, modo: str, lon: float, lat: float) -> dict:
+    """Quanto um equipamento novo do tipo `t` em (lon, lat) passaria a atender.
+
+    Conta as pessoas da faixa que ficam dentro do raio do ponto (com a mesma regra
+    de raio rural e a mesma medida de distância do mapa) e, entre elas, as que hoje
+    não têm nenhum equipamento no raio."""
+    from shapely.geometry import Point
+
+    b = base(cod)
+    r, _ = _resultado(cod, t, raio, modo)
+    p = gpd.GeoSeries([Point(lon, lat)], crs=WGS84).to_crs(b.pts.crs)
+    if not b.limite.geometry.iloc[0].buffer(1000).contains(p.iloc[0]):
+        raise ForaDoMunicipio("Ponto fora do município.")
+    xy = np.array([[p.iloc[0].x, p.iloc[0].y]])
+    rp = cob.raios(b.pts, raio, b.fr)
+    ii, _ = b.medidor(modo).pares(rp, xy)
+    sit = b.situacao(p)
+    rural = bool(sit["SITUACAO"].iloc[0] != "Urbana") if pd.notna(sit["SITUACAO"].iloc[0]) else False
+    bairro = _num(sit["NM_BAIRRO"].iloc[0])
+    raio_ef = raio * (b.fr if rural else 1)
+    novos = ii[~r.coberto[ii]]
+    pf = r.pop_faixa
+    tot = max(float(pf.sum()), 1)
+    antes = float(pf[r.coberto].sum())
+    if modo == "rede":
+        area = gpd.GeoSeries(b.medidor("rede").rede.areas_servico(xy, np.array([raio_ef])), crs=b.pts.crs)
+    else:
+        area = gpd.GeoSeries([p.iloc[0].buffer(raio_ef, quad_segs=24)], crs=b.pts.crs)
+    area = area.to_crs(WGS84).simplify(0.00005)
+    return {
+        "tipo": t, "raio_m": raio, "raio_efetivo_m": raio_ef, "modo": modo, "rural": rural, "bairro": bairro,
+        "pop_no_raio": round(float(pf[ii].sum())),
+        "novos_atendidos": round(float(pf[novos].sum())),
+        "demanda_sem_cobertura_absorvida": round(float(r.sem_cobertura[ii].sum())),
+        "demanda_total_absorvivel": round(float((r.sem_cobertura + r.deficit_cap)[ii].sum())),
+        "pct_coberta_antes": round(100 * antes / tot, 1),
+        "pct_coberta_depois": round(100 * (antes + float(pf[novos].sum())) / tot, 1),
+        "tempo_raio_min": round(raio_ef / velocidade(cod), 1),
+        "area": {"type": "Feature", "properties": {}, "geometry": mapping(area.iloc[0])},
+    }
 
 
 @lru_cache(maxsize=96)
@@ -209,7 +369,8 @@ def prioridade(cod: str, modo: str = "reta") -> dict:
 def esquecer(cod: str | None = None) -> None:
     """Limpa os caches (depois de reprocessar dados ou mudar parâmetros)."""
     from .analise import contexto
-    for f in (equipamentos, cobertura, areas, _prioridade_rede, prioridade):
+    for f in (equipamentos, cobertura, areas, _prioridade_rede, prioridade, _resultado, _dist_proxima,
+              ranking, setores, _setores_geo):
         f.cache_clear()          # lru_cache não remove por chave; limpar tudo é barato
     contexto.esquecer(cod)
 

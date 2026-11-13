@@ -60,21 +60,28 @@ Opcionalmente, `www.equicidade.com.br`. O botão "Entrar" da landing já aponta 
 **Formulário de demonstração:** não envia nada ao servidor. Ele abre o WhatsApp `(82) 98818-9617` com os dados
 preenchidos (`landing/assets/js/main.js`).
 
-## Promessas da landing × o que a ferramenta faz hoje
+## Promessas da landing × a ferramenta
 
-A landing descreve recursos que ainda não existem.
+Desde 13/11/2026, a ferramenta faz tudo o que a landing descreve.
 
-| Na landing | Situação na ferramenta |
+| Na landing | Na ferramenta |
 |---|---|
-| Mapa de cobertura com camadas | ✅ existe |
-| Distância real pelas ruas | ✅ existe (modo "a pé") |
-| Relatórios em PDF | ✅ existe |
-| "Tempo a pé" de cada moradia | ⚠️ calcula distância a pé, não mostra minutos |
-| Dados do IPTU | ⚠️ o upload só valida o arquivo; ainda não refina a densidade |
-| **Ranking de déficit** (bairros ordenados pela população sem atendimento) | ❌ não existe |
-| **Simulador de nova unidade** (marcar um terreno e ver quantos passaria a atender) | ❌ não existe |
+| Mapa de cobertura com camadas | ✅ camadas por tipo, raios, radar de áreas sugeridas |
+| Distância real pelas ruas | ✅ modo "a pé pelas ruas" (malha do OpenStreetMap) |
+| Tempo a pé de cada moradia até a unidade mais próxima | ✅ calculado para cada endereço. Aparece como tempo médio no painel, no ranking, ao clicar numa área do mapa e no PDF (80 m/min, `velocidade_caminhada_m_min`) |
+| Considerando a capacidade de cada unidade | ✅ método 2SFCA (matrículas e equipes de saúde) |
+| Mapa por setor censitário | ✅ botão "Setores do IBGE" em "Mostrar no mapa" (os hexágonos continuam como opção) |
+| Ranking de bairros | ✅ seção "Bairros com mais gente fora do raio", com zoom no bairro e planilha CSV; também no PDF |
+| Simulador de nova unidade | ✅ "Simular nova unidade": marcar no mapa e arrastar para comparar terrenos |
+| Relatórios em PDF | ✅ |
+| Cadastro do IPTU | o texto da landing foi ajustado: a prefeitura *pode enviar* o cadastro. Hoje ele é recebido e validado, mas ainda não entra no cálculo |
 
-**Antes de divulgar a landing:** implemente os dois itens ❌ ou tire-os do texto.
+**Como o ranking agrupa as moradias:** pelo bairro do IBGE.
+- **Setor urbano sem bairro no IBGE:** recebe o bairro do setor nomeado mais próximo.
+- **Setor rural:** entra como "Zona rural", com o nome do distrito quando o município tem mais de um.
+
+O simulador usa a mesma regra de raio, inclusive o rural, e a mesma medida de distância do mapa. Por isso, no centro de
+uma área sugerida, ele dá exatamente a demanda da sugestão (há teste automático para isso).
 
 **Identidade na ferramenta (aplicada em 13/11/2026).** Mapa, login, definir senha, painel de contas e relatório PDF
 já seguem a marca Equicidade:

@@ -14,9 +14,18 @@ const st = {
   modo: "reta",               // distância: "reta" (linha reta) ou "rede" (a pé pelas ruas)
   areas: {},                  // tipo -> GeoJSON de alcance a pé (modo rede)
   prio: {},                   // modo -> GeoJSON de prioridade
+  unid: "hex",                // déficit no mapa: "hex" (hexágonos) ou "setor" (setores do IBGE)
+  setores: {},                // "tipo|raio|modo" -> GeoJSON de déficit por setor
+  ranking: null,              // resposta /ranking do tipo mostrado
+  rankingTodos: false,
+  simulando: false,           // esperando o clique no mapa
+  sim: null,                  // { tipo, marcador, lngLat }
 };
 const APE = () => st.modo === "rede";
 const txtDist = () => (APE() ? "a pé pelas ruas" : "em linha reta");
+/* metros → minutos a pé (velocidade do parametros.yaml, padrão 80 m/min) */
+const minutos = (m) => Math.max(1, Math.round(m / (st.cfg?.velocidade_caminhada_m_min || 80)));
+const txtMin = (m) => `≈ ${minutos(m)} min a pé`;
 
 const fmt = (n, c = 0) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: c, minimumFractionDigits: c });
 const $ = (s) => document.querySelector(s);
@@ -174,8 +183,10 @@ async function carregarMunicipio(cod) {
   const tipos = Object.keys(st.cfg.tipos);
   tipos.forEach((t) => { st.raio[t] = st.cfg.tipos[t].raio_m; st.visivel[t] = true; });
   st.modo = st.cfg.distancia_padrao || "reta";
-  st.areas = {}; st.prio = {};
+  st.areas = {}; st.prio = {}; st.setores = {}; st.ranking = null;
   st.mostrar = tipos[0];
+  limparSimulacao();
+  ["sec-ranking", "sec-simular", "unid-mapa"].forEach((id) => { $(`#${id}`).hidden = Boolean(ESTATICO); });
 
   if (!st.map) criarMapa();
   else limparMapa();
@@ -192,10 +203,17 @@ async function carregarMunicipio(cod) {
     camada({ id: "deficit", type: "fill", source: "deficit", paint: {
       "fill-color": ["interpolate", ["linear"], ["get", "deficit"], 0, "#FFE9E5", 20, "#FFB3A8", 80, "#FF6B57", 300, "#C93A27"],
       "fill-opacity": 0.55 } });
+    camada({ id: "deficit-borda", type: "line", source: "deficit", paint: {
+      "line-color": "#C93A27", "line-opacity": ["case", ["==", ["get", "_unid"], "setor"], 0.35, 0], "line-width": 0.6 } });
     fonte("prioridade", vazio());
     camada({ id: "prioridade", type: "fill", source: "prioridade", layout: { visibility: "none" }, paint: {
       "fill-color": ["interpolate", ["linear"], ["get", "prioridade_geral"], 1, "#FFF1EE", 10, "#FFB3A8", 25, "#FF6B57", 45, "#8E2A1C"],
       "fill-opacity": 0.6 } });
+    fonte("simulacao", vazio());
+    camada({ id: "simulacao-fill", type: "fill", source: "simulacao", paint: { "fill-color": "#2F4BFF", "fill-opacity": 0.12 } });
+    camada({ id: "simulacao-linha", type: "line", source: "simulacao", paint: {
+      "line-color": "#2F4BFF", "line-width": 2, "line-dasharray": [2, 1.5] } });
+    ligarCliquesMapa();
     tipos.forEach((t) => {
       const cor = st.cfg.tipos[t].cor;
       fonte(`raios-${t}`, vazio());
@@ -305,7 +323,10 @@ function popupEquip(p, c) {
       .forEach(([rot, k]) => { if (mat[k]) linhas.push([`Matrículas – ${rot}`, fmt(mat[k])]); });
     if (p.mat_medio) linhas.push(["Matrículas – Ensino médio", fmt(p.mat_medio)]);
   }
-  if (st.raio[p.tipo]) linhas.push(["Raio de atendimento", `${fmt(st.raio[p.tipo] * (p.rural ? st.cfg.fator_raio_rural : 1))} m ${txtDist()}${p.rural ? " (zona rural)" : ""}`]);
+  if (st.raio[p.tipo]) {
+    const r = st.raio[p.tipo] * (p.rural ? st.cfg.fator_raio_rural : 1);
+    linhas.push(["Raio de atendimento", `${fmt(r)} m ${txtDist()} (${txtMin(r)})${p.rural ? " · zona rural" : ""}`]);
+  }
   const alerta = PRECISAS.has(p.fonte_coord) ? "" :
     `<div class="alerta">Localização ${p.fonte_coord === "sem_coordenada" ? "ausente" : "aproximada"} – confirmar com a prefeitura.</div>`;
   return `<div class="pop"><span class="tag" style="background:${c.cor}">${esc(c.rotulo)}</span>
@@ -325,7 +346,8 @@ function atualizarCobertura(t, atraso = 0) {
       if (raioPedido !== st.raio[t] || modoPedido !== st.modo) return;   // resposta antiga: slider ou modo mudou
       st.cob[t] = d;
       desenharRadares(t);
-      if (st.mostrar === t) fonte("deficit", d.hex);
+      if (st.mostrar === t) { atualizarDeficit(); atualizarRanking(); }
+      if (st.sim?.tipo === t) simular(st.sim.lngLat);
       atualizarKpis();
       atualizarLegenda();
     } finally {
@@ -375,10 +397,202 @@ async function mudarMostrar(v) {
     }
     if (st.mostrar === "prioridade" && modo === st.modo) fonte("prioridade", st.prio[modo]);
   } else {
-    fonte("deficit", st.cob[v]?.hex || vazio());
-    $("#nota-deficit").textContent = `Hexágonos vermelhos: ${st.cfg.tipos[v].unidade} sem ${st.cfg.tipos[v].rotulo.toLowerCase()} no raio ou onde a capacidade não dá conta. Quanto mais escuro, maior a demanda não resolvida.`;
+    atualizarDeficit();
+    $("#nota-deficit").textContent = `${st.unid === "setor" ? "Setores censitários" : "Hexágonos"} em coral: ${st.cfg.tipos[v].unidade} sem ${st.cfg.tipos[v].rotulo.toLowerCase()} no raio ou onde a capacidade não dá conta. Quanto mais escuro, maior a demanda não resolvida. Clique numa área para ver os números.`;
   }
+  $("#unid-mapa").hidden = Boolean(ESTATICO) || prio;
+  atualizarRanking();
   atualizarKpis();
+}
+
+/* ---------- Déficit por hexágono ou por setor censitário ---------- */
+const RAMPA_HEX = [0, "#FFE9E5", 20, "#FFB3A8", 80, "#FF6B57", 300, "#C93A27"];
+
+async function atualizarDeficit() {
+  const t = st.mostrar;
+  if (!st.map.getLayer("deficit") || t === "prioridade") return;
+  if (st.unid === "hex" || ESTATICO) {
+    st.map.setPaintProperty("deficit", "fill-color", ["interpolate", ["linear"], ["get", "deficit"], ...RAMPA_HEX]);
+    fonte("deficit", st.cob[t]?.hex || vazio());
+    return;
+  }
+  const chave = `${t}|${st.raio[t]}|${st.modo}`;
+  if (!st.setores[chave]) {
+    st.setores[chave] = await api(`/${st.cod}/setores?tipo=${t}&raio=${st.raio[t]}&modo=${st.modo}`);
+    st.setores[chave].features.forEach((f) => (f.properties._unid = "setor"));
+  }
+  if (st.mostrar !== t || st.unid !== "setor" || chave !== `${t}|${st.raio[t]}|${st.modo}`) return;
+  const fc = st.setores[chave];
+  // setores têm tamanhos muito diferentes: a escala segue os quantis do próprio município
+  const v = fc.features.map((f) => f.properties.deficit).filter((x) => x > 0.5).sort((a, b) => a - b);
+  const q = (p) => v.length ? v[Math.min(v.length - 1, Math.floor(p * v.length))] : 1;
+  const paradas = [0, q(0.25), q(0.6), q(0.9)].map((x, i, a) => (i && x <= a[i - 1] ? a[i - 1] + 0.01 * i : x));
+  st.map.setPaintProperty("deficit", "fill-color", ["interpolate", ["linear"], ["get", "deficit"],
+    paradas[0], "#FFE9E5", paradas[1], "#FFB3A8", paradas[2], "#FF6B57", paradas[3], "#C93A27"]);
+  fonte("deficit", { type: "FeatureCollection", features: fc.features.filter((f) => f.properties.deficit > 0.5) });
+}
+
+/* ---------- Cliques no mapa: popup do déficit ou ponto da simulação ---------- */
+function ligarCliquesMapa() {
+  if (st.cliquesLigados) return;
+  st.cliquesLigados = true;
+  st.map.on("click", (e) => {
+    if (!st.simulando) return;
+    st.simulando = false;
+    st.map.getCanvas().style.cursor = "";
+    $("#sim-instrucao").hidden = true;
+    posicionarSimulacao(e.lngLat);
+  });
+  st.map.on("click", "deficit", (e) => {
+    if (st.simulando || st.mostrar === "prioridade") return;
+    const p = e.features[0].properties, c = st.cfg.tipos[st.mostrar];
+    const linhas = [];
+    if (p.bairro) linhas.push(["Bairro", p.bairro]);
+    linhas.push([`${c.unidade[0].toUpperCase() + c.unidade.slice(1)} fora do raio`, fmt(p.pop_descoberta)]);
+    if (p.pct_fora != null) linhas.push(["Parcela da faixa fora do raio", `${fmt(p.pct_fora, 0)}%`]);
+    if (p.deficit_capacidade > 0.5) linhas.push(["Falta de capacidade (dentro do raio)", fmt(p.deficit_capacidade)]);
+    if (p.tempo_medio_min != null && p.tempo_medio_min !== "null")
+      linhas.push([`Tempo médio a pé até a ${c.rotulo.split(" (")[0].toLowerCase()} mais próxima`, `${fmt(p.tempo_medio_min, 0)} min`]);
+    const titulo = p._unid === "setor" ? `Setor censitário ${p.setor}` : "Área de ~0,1 km² (hexágono)";
+    new maplibregl.Popup({ maxWidth: "300px" }).setLngLat(e.lngLat).setHTML(
+      `<div class="pop"><span class="tag" style="background:${c.cor}">${esc(c.rotulo)}</span><h4>${esc(titulo)}</h4>
+       <dl>${linhas.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("")}</dl>
+       <div class="nota">Tempo ${APE() ? "a pé pelas ruas" : "pela distância em linha reta (fica abaixo do real)"},
+         a ${fmt(st.cfg.velocidade_caminhada_m_min || 80)} m por minuto.</div></div>`).addTo(st.map);
+  });
+  st.map.on("mouseenter", "deficit", () => { if (!st.simulando) st.map.getCanvas().style.cursor = "pointer"; });
+  st.map.on("mouseleave", "deficit", () => { if (!st.simulando) st.map.getCanvas().style.cursor = ""; });
+}
+
+/* ---------- Ranking de bairros ---------- */
+async function atualizarRanking() {
+  if (ESTATICO) return;
+  const t = st.mostrar === "prioridade" ? null : st.mostrar;
+  if (!t) {
+    $("#ranking-titulo").textContent = "Escolha um tipo de equipamento em “Mostrar no mapa” para ver o ranking.";
+    $("#ranking").innerHTML = "";
+    return;
+  }
+  const raio = st.raio[t], modo = st.modo;
+  const r = await api(`/${st.cod}/ranking?tipo=${t}&raio=${raio}&modo=${modo}`);
+  if (st.mostrar !== t || st.raio[t] !== raio || st.modo !== modo) return;
+  st.ranking = r;
+  desenharRanking();
+}
+
+function desenharRanking() {
+  const r = st.ranking, c = st.cfg.tipos[r.tipo];
+  const com = r.bairros.filter((b) => b.pop_fora >= 1);
+  $("#ranking-titulo").textContent = `${c.rotulo.split(" (")[0]} · raio ${fmt(r.raio_m)} m ${r.modo === "rede" ? "a pé" : "em linha reta"}`
+    + ` (${txtMin(r.raio_m)}). ${fmt(r.total_fora)} ${r.unidade} fora do raio no município.`;
+  const lista = st.rankingTodos ? com : com.slice(0, 8);
+  $("#ranking").innerHTML = lista.map((b, i) => `
+    <li><button type="button" class="ranking-item" data-i="${i}">
+      <span class="ranking-nome">${esc(b.bairro)}</span>
+      <span class="ranking-num">${fmt(b.pop_fora)}</span>
+      <span class="ranking-sub">${fmt(b.pct_fora, 0)}% da faixa fora do raio${b.tempo_medio_min != null ? ` · ${fmt(b.tempo_medio_min, 0)} min a pé, em média, até a mais próxima` : ""}</span>
+    </button></li>`).join("") || `<li class="nota">Ninguém fora do raio com esses parâmetros.</li>`;
+  $("#ranking").querySelectorAll(".ranking-item").forEach((el) => (el.onclick = () => {
+    const bb = lista[Number(el.dataset.i)].bbox;
+    st.map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: 60, maxZoom: 15 });
+  }));
+  $("#btn-ranking-todos").hidden = com.length <= 8;
+  $("#btn-ranking-todos").textContent = st.rankingTodos ? "Ver só os 8 primeiros" : `Ver todos (${com.length})`;
+  $("#btn-ranking-todos").setAttribute("aria-expanded", String(st.rankingTodos));
+}
+
+function baixarRankingCsv() {
+  const r = st.ranking;
+  if (!r) return;
+  const cab = ["bairro", `${r.unidade}_na_faixa`, `${r.unidade}_fora_do_raio`, "pct_fora_do_raio",
+    "falta_de_capacidade", "demanda_nao_resolvida", "tempo_medio_a_pe_min", "zona_rural"];
+  const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const linhas = r.bairros.map((b) => [b.bairro, b.pop_faixa, b.pop_fora, String(b.pct_fora).replace(".", ","),
+    b.deficit_capacidade, b.demanda_nao_resolvida, b.tempo_medio_min == null ? "" : String(b.tempo_medio_min).replace(".", ","),
+    b.rural ? "sim" : "não"].map(q).join(";"));
+  const csv = "﻿" + [cab.map(q).join(";"), ...linhas].join("\r\n");
+  const nome = `ranking_${r.tipo}_${r.raio_m}m_${r.modo === "rede" ? "a_pe" : "linha_reta"}.csv`;
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: nome });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+/* ---------- Simulador de nova unidade ---------- */
+function ligarSimulador() {
+  const sel = $("#sim-tipo");
+  sel.innerHTML = Object.entries(st.cfg.tipos).map(([t, c]) => `<option value="${t}">${esc(c.rotulo)}</option>`).join("");
+  sel.value = st.mostrar !== "prioridade" ? st.mostrar : Object.keys(st.cfg.tipos)[0];
+  sel.onchange = () => { if (st.sim) { st.sim.tipo = sel.value; simular(st.sim.lngLat); } };
+  $("#btn-simular").onclick = () => {
+    st.simulando = true;
+    st.map.getCanvas().style.cursor = "crosshair";
+    $("#sim-instrucao").hidden = false;
+  };
+  $("#btn-sim-limpar").onclick = limparSimulacao;
+  $("#btn-ranking-todos").onclick = () => { st.rankingTodos = !st.rankingTodos; desenharRanking(); };
+  $("#btn-ranking-csv").onclick = baixarRankingCsv;
+}
+
+function posicionarSimulacao(lngLat) {
+  const tipo = $("#sim-tipo").value;
+  if (!st.sim) {
+    const el = document.createElement("div");
+    el.className = "sim-marcador";
+    el.setAttribute("aria-label", "Local da nova unidade (arraste para mudar)");
+    const marcador = new maplibregl.Marker({ element: el, draggable: true }).setLngLat(lngLat).addTo(st.map);
+    marcador.on("dragend", () => { st.sim.lngLat = marcador.getLngLat(); simular(st.sim.lngLat); });
+    st.sim = { tipo, marcador, lngLat };
+  } else {
+    st.sim.tipo = tipo;
+    st.sim.lngLat = lngLat;
+    st.sim.marcador.setLngLat(lngLat);
+  }
+  $("#btn-sim-limpar").hidden = false;
+  simular(lngLat);
+}
+
+async function simular(lngLat) {
+  if (!st.sim) return;
+  const t = st.sim.tipo, c = st.cfg.tipos[t], raio = st.raio[t], modo = st.modo;
+  const caixa = $("#sim-resultado");
+  const pedido = (st.simPedido = (st.simPedido || 0) + 1);       // só vale a resposta do último pedido
+  caixa.hidden = false;
+  caixa.innerHTML = `<p class="nota">Calculando…</p>`;
+  let r;
+  try {
+    r = await api(`/${st.cod}/simular?tipo=${t}&raio=${raio}&modo=${modo}&lon=${lngLat.lng.toFixed(6)}&lat=${lngLat.lat.toFixed(6)}`);
+  } catch (e) {
+    if (pedido !== st.simPedido) return;
+    caixa.innerHTML = `<p class="erro">${esc(e.message)}</p>`;
+    fonte("simulacao", vazio());
+    return;
+  }
+  if (pedido !== st.simPedido || !st.sim) return;
+  fonte("simulacao", { type: "FeatureCollection", features: [r.area] });
+  const nome = c.rotulo.split(" (")[0].toLowerCase();
+  caixa.innerHTML = `
+    <div class="sim-num">${fmt(r.novos_atendidos)}</div>
+    <p>${esc(c.unidade)} que hoje não têm ${esc(nome)} no raio passariam a ter uma a até ${fmt(r.raio_efetivo_m)} m
+      ${modo === "rede" ? "a pé" : "em linha reta"} (${txtMin(r.raio_efetivo_m)}).</p>
+    <dl>
+      <dt>Local</dt><dd>${esc(r.bairro || (r.rural ? "Zona rural" : "Área sem bairro definido"))}</dd>
+      <dt>${esc(c.unidade[0].toUpperCase() + c.unidade.slice(1))} da faixa no raio</dt><dd>${fmt(r.pop_no_raio)}</dd>
+      <dt>Cobertura do município</dt><dd>${fmt(r.pct_coberta_antes, 1)}% → ${fmt(r.pct_coberta_depois, 1)}%</dd>
+      <dt>${t === "ubs" ? "Pessoas a atender" : "Vagas pela meta"} sem atendimento hoje</dt><dd>${fmt(r.demanda_sem_cobertura_absorvida)}</dd>
+      <dt>Somando a falta de capacidade no raio</dt><dd>${fmt(r.demanda_total_absorvivel)}</dd>
+    </dl>
+    <p class="nota">Supõe uma unidade dimensionada para essa demanda. Arraste o marcador para comparar terrenos.</p>`;
+}
+
+function limparSimulacao() {
+  st.simulando = false;
+  if (st.sim) st.sim.marcador.remove();
+  st.sim = null;
+  if (st.map?.getSource("simulacao")) fonte("simulacao", vazio());
+  if (st.map) st.map.getCanvas().style.cursor = "";
+  $("#sim-resultado").hidden = true;
+  $("#sim-instrucao").hidden = true;
+  $("#btn-sim-limpar").hidden = true;
 }
 
 /* ---------- Painel lateral ---------- */
@@ -408,16 +622,23 @@ function montarLateral() {
     + `<option value="prioridade">Prioridade geral (todos os tipos)</option>`;
   $("#sel-deficit").value = st.mostrar;
   $("#sel-deficit").onchange = (e) => mudarMostrar(e.target.value);
+  $("#unid-mapa").querySelectorAll("input").forEach((i) => {
+    i.checked = i.value === st.unid;
+    i.onchange = () => { st.unid = i.value; mudarMostrar(st.mostrar); };
+  });
+  if (!ESTATICO) ligarSimulador();
 
   $("#raios").innerHTML = Object.entries(tipos).map(([t, c]) => `
     <div class="raio" style="--cor:${c.cor}">
       <div class="raio-topo"><span>${esc(c.rotulo.split(" (")[0])}</span><b id="rv-${t}">${fmt(st.raio[t])} m</b></div>
+      <div class="raio-min" id="rm-${t}">${txtMin(st.raio[t])}</div>
       <input type="range" min="${ESTATICO?.raio_min ?? 200}" max="${ESTATICO?.raio_max ?? 3000}" step="${ESTATICO?.passo ?? 50}" value="${st.raio[t]}" data-tipo="${t}" aria-label="Raio – ${esc(c.rotulo)}">
     </div>`).join("");
   $("#raios").querySelectorAll("input").forEach((i) => i.addEventListener("input", () => {
     const t = i.dataset.tipo;
     st.raio[t] = Number(i.value);
     $(`#rv-${t}`).textContent = `${fmt(st.raio[t])} m`;
+    $(`#rm-${t}`).textContent = txtMin(st.raio[t]);
     desenharRaios(t);
     atualizarCobertura(t, 350);
   }));
@@ -444,6 +665,7 @@ function mudarModo(modo) {
   notaModo();
   Object.keys(st.cfg.tipos).forEach((t) => { desenharRaios(t); atualizarCobertura(t); });
   if (st.mostrar === "prioridade") mudarMostrar("prioridade");
+  if (st.sim) simular(st.sim.lngLat);
   atualizarLegenda();
 }
 
@@ -462,7 +684,8 @@ function atualizarKpis() {
   $("#kpis").innerHTML = `
     <div class="kpi"><div class="rot">População</div><div class="val">${pop ? fmt(pop) : "…"}</div><div class="sub">Censo 2022</div></div>
     <div class="kpi"><div class="rot">Sem ${esc(tipos[t].rotulo.split(" (")[0].toLowerCase())} no raio</div>
-      <div class="val">${it ? fmt(it.pop_descoberta) : "…"}</div><div class="sub">${tipos[t].unidade} · raio ${fmt(st.raio[t])} m ${APE() ? "a pé" : ""}</div></div>
+      <div class="val">${it ? fmt(it.pop_descoberta) : "…"}</div><div class="sub">${tipos[t].unidade} · raio ${fmt(st.raio[t])} m ${APE() ? "a pé" : ""}</div>
+      ${st.cob[t]?.acesso?.tempo_medio_min != null ? `<div class="sub">Tempo médio a pé até a mais próxima: <b>${fmt(st.cob[t].acesso.tempo_medio_min, 0)} min</b></div>` : ""}</div>
     <div class="kpi cobertura"><div class="rot">População coberta pelo raio de cada equipamento · ${txtDist()}</div>${barras}
       <div class="sub" style="margin-top:6px">${nRadar} áreas prioritárias sugeridas no mapa</div></div>`;
 }
@@ -472,7 +695,7 @@ function atualizarLegenda() {
     <div class="leg-item">${svgIcone(c.cor, c.icone)}
       <svg class="leg-radar" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="${c.cor}" fill-opacity=".1" stroke="${c.cor}" stroke-width="1.4"/>
         <circle cx="11" cy="11" r="6.6" fill="none" stroke="${c.cor}" stroke-opacity=".5"/><circle cx="11" cy="11" r="3.3" fill="none" stroke="${c.cor}" stroke-opacity=".3"/></svg>
-      <span>${esc(c.rotulo.split(" (")[0])} – <b>${fmt(st.raio[t])} m</b></span></div>`).join("");
+      <span>${esc(c.rotulo.split(" (")[0])} – <b>${fmt(st.raio[t])} m</b> · ${minutos(st.raio[t])} min</span></div>`).join("");
   $("#legenda").innerHTML = `<h3>Equipamentos e raios ${APE() ? "(a pé)" : ""}</h3>${itens}
     <div class="leg-item"><span class="radar" style="--cor:#FF6B57;width:18px;height:18px"><span class="nucleo"></span></span><span>Área prioritária (radar)</span></div>
     <div class="leg-item"><span class="leg-hex"></span><span>Demanda não resolvida</span></div>

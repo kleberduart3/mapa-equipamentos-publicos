@@ -33,7 +33,7 @@
   .ponto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
   ul.achados { padding-left: 18px; margin: 4px 0 10px; }
   ul.achados li { margin-bottom: 5px; }
-  .mapa { width: 100%; border: 1px solid #D5D9EA; border-radius: 6px; display: block; max-height: 128mm; object-fit: contain; }
+  .mapa { width: 100%; border: 1px solid #D5D9EA; border-radius: 6px; display: block; max-height: 112mm; object-fit: contain; }
   .legenda { font-size: 8pt; color: #4A5072; margin-top: 4px; }
   table { width: 100%; border-collapse: collapse; font-size: 8.8pt; margin: 6px 0 10px; }
   th, td { padding: 4px 6px; border-bottom: 1px solid #D5D9EA; text-align: left; vertical-align: top; }
@@ -100,7 +100,7 @@
 <section class="pagina" style="--cor: {{ t.cor }}">
   <div class="faixa-tipo">
     <h2>{{ t.rotulo }}</h2>
-    <div class="sub">Raio de atendimento {{ t.cfg.raio_m|n }} m {{ 'a pé' if modo == 'rede' else 'em linha reta' }} (zona rural: {{ (t.cfg.raio_m * fr)|n }} m) ·
+    <div class="sub">Raio de atendimento {{ t.cfg.raio_m|n }} m {{ 'a pé' if modo == 'rede' else 'em linha reta' }} (≈ {{ t.raio_min }} min a pé; zona rural: {{ (t.cfg.raio_m * fr)|n }} m) ·
       meta de atendimento {{ (100 * t.cfg.taxa_atendimento_meta)|n }}% · redes: {{ t.redes }}</div>
   </div>
 
@@ -110,11 +110,12 @@
     <div class="kpi"><div class="r">Fora de qualquer raio</div><div class="v">{{ t.pop_desc|n }}</div></div>
     <div class="kpi"><div class="r">Falta de capacidade no raio</div><div class="v">{{ t.def_cap|n }}</div></div>
   </div>
+  {% if t.tempo_medio is not none %}<p class="nota">Tempo médio {{ 'a pé pelas ruas' if modo == 'rede' else 'a pé (pela distância em linha reta)' }} de cada morador da faixa até a unidade mais próxima: <b>{{ t.tempo_medio|n(1) }} min</b>.</p>{% endif %}
 
   <img class="mapa" src="{{ t.mapa }}" alt="Mapa de cobertura – {{ t.rotulo }}">
-  <p class="legenda">Pontos: {{ t.n_fac }} equipamentos (contorno vermelho = localização a confirmar). {% if modo == 'rede' %}Manchas: área alcançável
+  <p class="legenda">Pontos: {{ t.n_fac }} equipamentos (contorno coral = localização a confirmar). {% if modo == 'rede' %}Manchas: área alcançável
     a pé pelas ruas dentro do raio, na cor do tipo.{% else %}Círculos: raio de
-    atendimento na cor do tipo.{% endif %} Vermelho: demanda não resolvida (fora do raio ou sem capacidade). Radar numerado: áreas
+    atendimento na cor do tipo.{% endif %} Coral: demanda não resolvida (fora do raio ou sem capacidade). Radar numerado: áreas
     sugeridas para novos equipamentos, em ordem.</p>
 
   {% if t.sug %}
@@ -130,6 +131,17 @@
     ainda não resolvida. Indica onde estudar terrenos, não um endereço definitivo.</p>
   {% else %}
   <p class="nota">Nenhuma área atinge a demanda mínima configurada para sugerir um novo equipamento.</p>
+  {% endif %}
+
+  {% if t.ranking %}
+  <h3>Bairros com mais {{ t.unidade }} fora do raio</h3>
+  <table class="comp">
+    <tr><th>Bairro</th><th class="n">Na faixa</th><th class="n">Fora do raio</th><th class="n">%</th><th class="n">Tempo médio até a mais próxima</th></tr>
+    {% for b in t.ranking %}
+    <tr><td>{{ b.bairro }}</td><td class="n">{{ b.pop_faixa|n }}</td><td class="n">{{ b.pop_fora|n }}</td><td class="n">{{ b.pct_fora|n }}%</td>
+      <td class="n">{{ b.tempo_medio_min|n }} min</td></tr>
+    {% endfor %}
+  </table>
   {% endif %}
 
   {% if t.mat %}

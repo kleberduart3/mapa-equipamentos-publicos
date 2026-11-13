@@ -24,6 +24,27 @@ class MunicipioNaoProcessado(FileNotFoundError):
     pass
 
 
+def rotulo_bairro(setores: gpd.GeoDataFrame) -> pd.Series:
+    """Nome usado no ranking para cada setor (índice: CD_SETOR).
+    Com bairro no IBGE: o bairro. Urbano sem bairro: o bairro do setor nomeado mais
+    próximo. Rural: "Zona rural" (com o distrito, se o município tiver mais de um)."""
+    nome = setores["NM_BAIRRO"].where(setores["NM_BAIRRO"].astype(str).str.strip().ne("")
+                                      & setores["NM_BAIRRO"].notna())
+    rural = setores["SITUACAO"] != "Urbana"
+    varios_distritos = setores["NM_DIST"].nunique() > 1
+    zona = np.where(varios_distritos, "Zona rural – " + setores["NM_DIST"].astype(str), "Zona rural")
+    out = pd.Series(np.where(rural & nome.isna(), zona, nome), index=setores.index, dtype=object)
+    falta = out.isna()
+    com_nome = setores[nome.notna()]
+    if falta.any() and len(com_nome):
+        perto = gpd.sjoin_nearest(setores.loc[falta, ["geometry"]], com_nome[["NM_BAIRRO", "geometry"]], how="left")
+        perto = perto[~perto.index.duplicated()]
+        out.loc[falta] = perto["NM_BAIRRO"].reindex(out.index[falta]).to_numpy()
+    out = out.fillna("Sem bairro")
+    out.index = setores["CD_SETOR"].to_numpy()
+    return out
+
+
 class Base:
     def __init__(self, m: Municipio) -> None:
         if not m.processado:
@@ -51,6 +72,10 @@ class Base:
         self.cand_xy = np.column_stack([cand.x, cand.y])
         self.hex_poly = {c: [[lng, lat] for lat, lng in h3.cell_to_boundary(c)] for c in self.hex_ids}
         self.bairros = self.setores[["NM_BAIRRO", "NM_DIST", "SITUACAO", "geometry"]]
+        # bairro de cada ponto, para o ranking (setor sem nome de bairro: ver rotulo_bairro)
+        self.setor_bairro = rotulo_bairro(self.setores)
+        self.pts["bairro"] = self.pts["CD_SETOR"].map(self.setor_bairro).fillna("Sem bairro").to_numpy()
+        self.lon, self.lat = ll.geometry.x.to_numpy(), ll.geometry.y.to_numpy()
 
         self._medidores: dict = {}
         self._trava = threading.Lock()
