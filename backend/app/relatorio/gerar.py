@@ -341,7 +341,9 @@ def gerar_pdf(cod: str, destino: Path | None = None, raios: dict[str, int] | Non
               f'display:flex;justify-content:space-between"><span>Mapa de Equipamentos Públicos – {m["nome"]}/{m["uf"]}</span>'
               '<span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span></div>')
     with sync_playwright() as p:
-        nav = p.chromium.launch()
+        # /dev/shm do Docker tem 64 MB: com mapas grandes o Chromium cai sem esta opção
+        nav = p.chromium.launch(args=["--disable-dev-shm-usage"])
+
         try:
             pg = nav.new_page()
             pg.set_default_timeout(tempo_limite_s * 1000)

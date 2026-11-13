@@ -30,7 +30,7 @@ curl -fsSL https://get.docker.com | sh && usermod -aG docker mapa
 
 No painel do registro do domínio (Registro.br, Cloudflare etc.), crie:
 - um registro **A**: `mapa.seudominio.com.br` → IP da VPS (e **AAAA**, se a VPS tiver IPv6);
-- opcionalmente, `www.mapa…` apontando para o mesmo IP.
+- (opcional) `www.mapa…` para o mesmo IP. Nesse caso, acrescente o bloco de redirecionamento indicado no topo de `deploy/Caddyfile`.
 
 O Caddy só consegue emitir o certificado depois que o DNS estiver propagado. Confira com `dig +short mapa.seudominio.com.br`.
 
@@ -41,6 +41,7 @@ git clone https://github.com/kleberduart3/mapa-equipamentos-publicos.git /srv/ma
 cd /srv/mapa
 cp .env.exemplo .env && nano .env        # MAPA_DOMINIO, MAPA_URL_BASE, e-mail do certificado, SMTP (opcional)
 chmod 600 .env
+mkdir -p dados
 ```
 
 Para os dados há dois caminhos:
@@ -56,6 +57,14 @@ Para os dados há dois caminhos:
   ```
 
 Arapiraca tem o Catálogo do INEP versionado no git, então reprocessar dá os mesmos números.
+
+**Dono das pastas.** O container roda como o usuário 10001, sem root. Ele precisa poder gravar em `dados/`
+(uploads das prefeituras, processamento) e em `config/` (o processamento cria o YAML do município).
+Rode isto depois de copiar ou processar os dados, e de novo se copiar arquivos como outro usuário:
+
+```bash
+sudo chown -R 10001:10001 dados config
+```
 
 ## 4. Subir
 
@@ -90,13 +99,16 @@ O que não se recupera baixando de novo:
 ```bash
 # /etc/cron.daily/mapa-backup  (chmod +x)
 #!/bin/sh
-set -e
-D=/srv/backup/$(date +%F); mkdir -p "$D"
-docker compose -f /srv/mapa/docker-compose.yml exec -T app \
-  python -c "import sqlite3; s=sqlite3.connect('/var/lib/mapa/app.db'); d=sqlite3.connect('/tmp/app.db'); s.backup(d); d.close()"
-docker compose -f /srv/mapa/docker-compose.yml cp app:/tmp/app.db "$D/app.db"
+set -eu
+C="docker compose -f /srv/mapa/docker-compose.yml"
+D=/srv/backup/$(date +%F); mkdir -p "$D"; chmod 700 /srv/backup
+# cópia consistente do SQLite (mesmo com o site em uso), gravada no volume e depois lida para fora
+$C exec -T app python -c "import sqlite3; s=sqlite3.connect('/var/lib/mapa/app.db'); d=sqlite3.connect('/var/lib/mapa/backup.db'); s.backup(d); d.close(); s.close()"
+$C exec -T app cat /var/lib/mapa/backup.db > "$D/app.db"
+test -s "$D/app.db"
 tar czf "$D/prefeitura_config.tgz" -C /srv/mapa config .env $(cd /srv/mapa && ls -d dados/brutos/municipios/*/prefeitura 2>/dev/null)
-find /srv/backup -maxdepth 1 -mtime +30 -exec rm -rf {} +
+find /srv/backup -mindepth 1 -maxdepth 1 -mtime +30 -exec rm -rf {} +
+
 ```
 
 Copie `/srv/backup` para fora do servidor, por exemplo com o rclone para um bucket ou outro provedor.

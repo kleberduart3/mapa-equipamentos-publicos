@@ -22,7 +22,8 @@ from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
-from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from starlette.datastructures import UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -208,17 +209,27 @@ _NOME_OK = re.compile(r"^[\w.\- ]{1,120}$")
 
 
 @app.post("/api/{cod}/upload-iptu")
-async def upload_iptu(cod: str, request: Request, arquivos: list[UploadFile] = File(...),
-                      acesso=Depends(gerir_municipio)):
+async def upload_iptu(cod: str, request: Request, acesso=Depends(gerir_municipio)):
     """Recebe o cadastro do IPTU (CSV com coordenadas, GeoPackage, GeoJSON ou
-    shapefile — .zip ou os arquivos .shp/.dbf/.shx/.prj juntos) e confere o conteúdo."""
+    shapefile — .zip ou os arquivos .shp/.dbf/.shx/.prj juntos) e confere o conteúdo.
+
+    O corpo é lido aqui dentro, DEPOIS de conferir login e papel (com um parâmetro
+    File(...) o FastAPI leria o arquivo inteiro antes de checar o acesso)."""
     u = acesso[0]
-    if len(arquivos) > 10:
-        raise HTTPException(400, "Envie no máximo 10 arquivos.")
     limite_bytes = cfg().upload_max_mb * 1024 * 1024
+    tamanho = request.headers.get("content-length")
+    if tamanho and tamanho.isdigit() and int(tamanho) > limite_bytes + 1024 * 1024:
+        raise HTTPException(413, f"Arquivos acima de {cfg().upload_max_mb} MB.")
+    try:
+        form = await request.form(max_files=10, max_fields=10)
+    except Exception:                                   # noqa: BLE001 – multipart malformado ou acima dos limites
+        raise HTTPException(400, "Envio inválido: no máximo 10 arquivos.") from None
     m = municipio(cod)
     tmp = Path(tempfile.mkdtemp(prefix="iptu_"))
     try:
+        arquivos = [a for a in form.getlist("arquivos") if isinstance(a, UploadFile)]
+        if not arquivos:
+            raise HTTPException(400, "Escolha ao menos um arquivo.")
         total, nomes = 0, []
         for a in arquivos:
             nome = Path(a.filename or "").name
@@ -244,6 +255,7 @@ async def upload_iptu(cod: str, request: Request, arquivos: list[UploadFile] = F
         return resultado
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+        await form.close()
 
 
 def _conferir_iptu(cod: str, pasta: Path, nomes: list[str]) -> dict:

@@ -1,28 +1,39 @@
 # HTTPS automático (Let's Encrypt) para o domínio em MAPA_DOMINIO.
+# Para atender também www.seudominio, crie o registro DNS e acrescente outro bloco
+# "www.{$MAPA_DOMINIO} { redir https://{$MAPA_DOMINIO}{uri} permanent }".
 {
 	email {$MAPA_EMAIL_CERTIFICADO}
 }
 
-{$MAPA_DOMINIO} {
-	encode zstd gzip
-	request_body {
-		max_size 210MB
-	}
-	header {
-		-Server
-	}
+(app) {
 	reverse_proxy app:8000 {
 		transport http {
-			read_timeout 5m      # relatório PDF demora ~1 min
+			read_timeout 5m
 		}
 	}
+}
+
+{$MAPA_DOMINIO} {
+	encode zstd gzip
+	header -Server
 	log {
 		output stdout
 		format json
 	}
-}
 
-# www → domínio principal
-www.{$MAPA_DOMINIO} {
-	redir https://{$MAPA_DOMINIO}{uri} permanent
+	# Corpo das requisições: até 210 MB só no envio do cadastro do IPTU; 1 MB no resto.
+	# (handle é exclusivo: cada requisição cai em um bloco só.)
+	@upload path_regexp ^/api/[0-9]{7}/upload-iptu$
+	handle @upload {
+		request_body {
+			max_size 210MB
+		}
+		import app
+	}
+	handle {
+		request_body {
+			max_size 1MB
+		}
+		import app
+	}
 }

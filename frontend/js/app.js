@@ -227,7 +227,11 @@ function criarMapa() {
   st.map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 }
 
-function aoCarregar(fn) { st.map.loaded() ? fn() : st.map.once("load", fn); }
+/* Roda fn quando o estilo do mapa estiver pronto. Não usa map.loaded(): ele fica
+   false enquanto houver mosaicos carregando, e o evento "load" só dispara uma vez –
+   se os dados chegassem depois dele, fn nunca rodaria. */
+function aoCarregar(fn) { st.map.isStyleLoaded() ? fn() : st.map.once("load", fn); }
+
 const vazio = () => ({ type: "FeatureCollection", features: [] });
 function fonte(id, dados) { st.map.getSource(id) ? st.map.getSource(id).setData(dados) : st.map.addSource(id, { type: "geojson", data: dados }); }
 function camada(def) { if (!st.map.getLayer(def.id)) st.map.addLayer(def); }

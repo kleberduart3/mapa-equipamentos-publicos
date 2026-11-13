@@ -215,3 +215,21 @@ def test_producao_exige_https(monkeypatch):
     monkeypatch.setenv("MAPA_URL_BASE", "https://exemplo.gov.br")
     monkeypatch.setenv("MAPA_COOKIE_SEGURO", "true")
     configuracao.Configuracao().validar_producao()
+
+
+def test_upload_anonimo_recusado_antes_de_ler_o_corpo(app):
+    # sem login: 401 sem processar o multipart (o corpo nem chega a ser lido)
+    r = app.post("/api/2700300/upload-iptu", headers=CSRF, files={"arquivos": ("a.csv", b"x" * 1000)})
+    assert r.status_code == 401
+
+
+def test_upload_gestor_valida_arquivos(app):
+    from backend.app.config import municipio
+    if not municipio("2700300").processado:
+        pytest.skip("Arapiraca não processada nesta máquina")
+    criar("gest@x.gov.br", acessos=[("2700300", "gestor")])
+    entrar(app, "gest@x.gov.br")
+    assert app.post("/api/2700300/upload-iptu", headers=CSRF, files={"arquivos": ("a.exe", b"MZ")}).status_code == 400
+    assert app.post("/api/2700300/upload-iptu", headers=CSRF, files={"outro": ("a.csv", b"1")}).status_code == 400
+    muitos = [("arquivos", (f"a{i}.csv", b"1")) for i in range(11)]
+    assert app.post("/api/2700300/upload-iptu", headers=CSRF, files=muitos).status_code == 400

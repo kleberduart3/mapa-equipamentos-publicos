@@ -157,7 +157,7 @@ class CabecalhosSeguranca(BaseHTTPMiddleware):
         h.setdefault("Content-Security-Policy", CSP)
         h.setdefault("X-Content-Type-Options", "nosniff")
         h.setdefault("X-Frame-Options", "DENY")
-        h.setdefault("Referrer-Policy", "same-origin")
+        h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")   # o OSM pede Referer; vai só o domínio
         h.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
         h.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         if request.url.path.startswith(("/api/", "/auth/")):
