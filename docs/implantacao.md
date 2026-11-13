@@ -107,10 +107,26 @@ Abra o link que o último comando mostrar e defina a sua senha. Depois, em **Adm
 
 ## 5. Operação
 
+### Liberar uma cidade (depois da compra)
+
+A Equicidade vende **uma cidade por compra**: o município só é processado e liberado depois que a compra é
+efetuada. Deste computador:
+
+```bash
+bash deploy/liberar_cidade.sh 2704302          # começa (roda no servidor, em segundo plano)
+bash deploy/liberar_cidade.sh 2704302 status   # acompanha; no fim mostra a checagem dos dados
+```
+
+- Leva ~1 h por cidade. Na primeira cidade nova, baixa também os arquivos nacionais do IBGE, INEP e CNES (uma vez só).
+- O site continua no ar. No fim, a ferramenta reinicia em poucos segundos para enxergar o município novo.
+- Quando o `status` disser "Pronto para liberar":
+  1. leia a checagem (escolas sem coordenada precisa, UBS fora do limite) e acerte com a prefeitura;
+  2. em **Administrar contas**, crie a conta da prefeitura, marque o município e envie o convite.
+
 | Tarefa | Comando |
 |---|---|
 | Atualizar o código | `git pull && docker compose up -d --build` |
-| Novo município | `docker compose run --rm pipeline python backend/scripts/processar_municipio.py CÓDIGO` e depois `docker compose restart app` |
+| Novo município (à mão, no servidor) | `docker compose run --rm pipeline python backend/scripts/processar_municipio.py CÓDIGO` e depois `docker compose restart app` |
 | Mudou `config/parametros.yaml` | `docker compose run --rm pipeline python backend/scripts/calcular_cobertura.py -m CÓDIGO` e depois `docker compose restart app` |
 | Link de senha (alguém esqueceu) | painel de contas, ou `docker compose exec app python -m backend.app.acesso.cli link email@x` |
 | Ver logs | `docker compose logs --tail 200 app` |

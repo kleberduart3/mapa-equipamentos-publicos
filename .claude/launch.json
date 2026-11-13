@@ -7,6 +7,12 @@
       "runtimeArgs": ["run", "-n", "equipamentos", "--no-capture-output", "uvicorn", "backend.app.api.main:app", "--port", "8000"],
       "env": {"MAPA_URL_BASE": "http://localhost:8000", "MAPA_AMBIENTE": "desenvolvimento"},
       "port": 8000
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "C:/Users/Public/miniforge3/envs/equipamentos/python.exe",
+      "runtimeArgs": ["-m", "http.server", "8100", "--bind", "127.0.0.1", "--directory", "landing"],
+      "port": 8100
     }
   ]
 }
