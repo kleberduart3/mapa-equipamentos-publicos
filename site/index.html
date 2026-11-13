@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapa de Equipamentos Públicos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+  <link href="css/app.css" rel="stylesheet">
+</head>
+<body>
+  <header class="topo">
+    <div class="marca">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+      <span>Mapa de Equipamentos Públicos</span>
+    </div>
+    <label class="seletor">
+      <span class="vis-oculto">Município</span>
+      <select id="municipio"></select>
+    </label>
+    <div class="acoes">
+      <button id="btn-upload" class="btn sec">Importar dados da prefeitura</button>
+      <button id="btn-pdf" class="btn" title="Gera o relatório com os raios atuais do mapa">Exportar relatório PDF</button>
+    </div>
+  </header>
+
+  <main class="corpo">
+    <aside class="lateral">
+      <section>
+        <h2>Camadas</h2>
+        <div id="camadas"></div>
+        <label class="toggle"><input type="checkbox" id="tg-raios" checked><span class="trilho"></span>Raios de atendimento</label>
+        <label class="toggle"><input type="checkbox" id="tg-radar" checked><span class="trilho"></span>Áreas deficitárias (radar)</label>
+        <label class="toggle"><input type="checkbox" id="tg-estaduais"><span class="trilho"></span>Escolas estaduais de ensino médio (contexto)</label>
+      </section>
+      <section>
+        <h2>Mostrar no mapa</h2>
+        <select id="sel-deficit" class="campo"></select>
+        <p class="nota" id="nota-deficit"></p>
+      </section>
+      <section>
+        <h2>Raio de atendimento</h2>
+        <div class="segmentado" id="modo-dist" role="radiogroup" aria-label="Como medir a distância">
+          <label><input type="radio" name="modo" value="reta"><span>Linha reta</span></label>
+          <label><input type="radio" name="modo" value="rede"><span>A pé pelas ruas</span></label>
+        </div>
+        <div id="raios"></div>
+        <p class="nota" id="nota-rural"></p>
+      </section>
+    </aside>
+
+    <div class="mapa-wrap">
+      <div id="mapa" role="application" aria-label="Mapa"></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="legenda" id="legenda"></div>
+      <div class="carregando" id="carregando" hidden>Calculando…</div>
+    </div>
+  </main>
+
+  <dialog id="dlg-upload">
+    <form method="dialog" class="dlg">
+      <h2>Importar cadastro imobiliário (IPTU)</h2>
+      <p>Envie um CSV com colunas de latitude e longitude, um GeoPackage, um GeoJSON ou um shapefile
+        (.zip, ou os arquivos .shp, .dbf, .shx e .prj juntos).</p>
+      <input type="file" id="arq-iptu" multiple accept=".csv,.zip,.gpkg,.geojson,.json,.shp,.dbf,.shx,.prj,.cpg">
+      <p id="res-upload" class="nota" aria-live="polite"></p>
+      <div class="dlg-acoes">
+        <button value="cancel" class="btn sec">Fechar</button>
+        <button id="btn-enviar" type="button" class="btn">Enviar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
