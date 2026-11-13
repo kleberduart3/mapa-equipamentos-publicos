@@ -1,6 +1,6 @@
-# HTTPS automático (Let's Encrypt) para o domínio em MAPA_DOMINIO.
-# Para atender também www.seudominio, crie o registro DNS e acrescente outro bloco
-# "www.{$MAPA_DOMINIO} { redir https://{$MAPA_DOMINIO}{uri} permanent }".
+# HTTPS automático (Let's Encrypt) para os dois endereços:
+#   MAPA_DOMINIO_SITE  equicidade.com.br       landing page (arquivos estáticos de landing/)
+#   MAPA_DOMINIO       mapa.equicidade.com.br  a ferramenta (login, mapa, API)
 {
 	email {$MAPA_EMAIL_CERTIFICADO}
 }
@@ -13,6 +13,37 @@
 	}
 }
 
+(cabecalhos_site) {
+	header {
+		-Server
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=31536000"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+	}
+}
+
+# ---------------------------------------------------------------- landing page
+{$MAPA_DOMINIO_SITE} {
+	encode zstd gzip
+	import cabecalhos_site
+	root * /srv/landing
+	@estaticos path /assets/* /favicon* /apple-touch-icon.png
+	header @estaticos Cache-Control "public, max-age=604800"
+	file_server
+	log {
+		output stdout
+		format json
+	}
+}
+
+www.{$MAPA_DOMINIO_SITE} {
+	redir https://{$MAPA_DOMINIO_SITE}{uri} permanent
+}
+
+# ---------------------------------------------------------------- ferramenta
 {$MAPA_DOMINIO} {
 	encode zstd gzip
 	header -Server

@@ -1,4 +1,8 @@
-# Mapa de Déficit de Equipamentos Públicos
+# Equicidade – Mapa de Déficit de Equipamentos Públicos
+
+> **Equicidade** é o nome do produto: landing em `equicidade.com.br` ([`landing/`](landing/)), ferramenta em
+> `mapa.equicidade.com.br`. Marca, cores e logos em [`marca/`](marca/); resumo, domínios e pendências em
+> [`docs/equicidade.md`](docs/equicidade.md).
 
 Ferramenta web para prefeituras que mapeia creches, escolas e unidades básicas de saúde
 de responsabilidade municipal, cruza com a população por setor censitário e mostra no
@@ -120,7 +124,9 @@ Equipamentos Publicos/
 ├── tests/                       # pytest: acesso e regressão de Arapiraca
 ├── deploy/Caddyfile             # proxy HTTPS
 ├── Dockerfile  docker-compose.yml  .env.exemplo
-└── docs/                        # fontes, implantação e segurança
+├── docs/                        # fontes, implantação, segurança e equicidade.md
+├── landing/                     # landing page estática (equicidade.com.br)
+└── marca/                       # manual da marca, tokens.json e logos SVG
 ```
 
 ## 3. Fontes de dados

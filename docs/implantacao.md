@@ -28,11 +28,15 @@ curl -fsSL https://get.docker.com | sh && usermod -aG docker mapa
 
 ## 2. Domínio
 
-No painel do registro do domínio (Registro.br, Cloudflare etc.), crie:
-- um registro **A**: `mapa.seudominio.com.br` → IP da VPS (e **AAAA**, se a VPS tiver IPv6);
-- (opcional) `www.mapa…` para o mesmo IP. Nesse caso, acrescente o bloco de redirecionamento indicado no topo de `deploy/Caddyfile`.
+O produto usa **equicidade.com.br** para a landing page e **mapa.equicidade.com.br** para a ferramenta
+(detalhes em `docs/equicidade.md`). No painel do Registro.br (ou do DNS que você usar), crie registros **A**
+apontando para o IP da VPS (e **AAAA**, se ela tiver IPv6) para:
+- `equicidade.com.br`
+- `www.equicidade.com.br` (o Caddy redireciona para o endereço sem www)
+- `mapa.equicidade.com.br`
 
-O Caddy só consegue emitir o certificado depois que o DNS estiver propagado. Confira com `dig +short mapa.seudominio.com.br`.
+O Caddy só consegue emitir os certificados depois que o DNS estiver propagado. Confira com
+`dig +short equicidade.com.br` e `dig +short mapa.equicidade.com.br`.
 
 ## 3. Código, configuração e dados
 

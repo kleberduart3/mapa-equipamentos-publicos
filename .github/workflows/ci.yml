@@ -50,7 +50,7 @@ jobs:
           import os; assert os.path.getsize('/tmp/t.pdf') > 1000; print('pdf ok')"
       - name: Confere o Caddyfile
         run: |
-          docker run --rm -e MAPA_DOMINIO=exemplo.gov.br -e MAPA_EMAIL_CERTIFICADO=ti@exemplo.gov.br \
+          docker run --rm -e MAPA_DOMINIO=mapa.exemplo.gov.br -e MAPA_DOMINIO_SITE=exemplo.gov.br -e MAPA_EMAIL_CERTIFICADO=ti@exemplo.gov.br \
             -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2.10-alpine \
             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 

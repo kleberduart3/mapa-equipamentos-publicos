@@ -11,3 +11,5 @@ docs
 .env.*
 *.db
 *.db-*
+landing
+marca

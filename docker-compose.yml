@@ -39,6 +39,7 @@ services:
     env_file: .env
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./landing:/srv/landing:ro       # equicidade.com.br (landing page estática)
       - caddy_data:/data                # certificados HTTPS (Let's Encrypt)
       - caddy_config:/config
     security_opt: ["no-new-privileges:true"]
