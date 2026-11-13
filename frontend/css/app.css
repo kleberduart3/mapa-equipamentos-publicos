@@ -53,6 +53,7 @@ body { font-family: var(--sans); color: var(--texto); background: var(--fundo); 
 .btn:hover:not(:disabled) { background: var(--primaria-escura); }
 .btn:disabled { opacity: .5; cursor: progress; }
 .btn.sec { background: #fff; color: var(--texto); border-color: var(--borda); }
+a.btn { text-decoration: none; }
 .btn.sec:hover:not(:disabled) { background: #fff; border-color: var(--primaria); color: var(--primaria); }
 .btn.fantasma { background: transparent; color: var(--texto); }
 .btn.fantasma:hover:not(:disabled) { background: var(--primaria-clara); }
@@ -381,3 +382,6 @@ dialog::backdrop { background: rgba(13, 20, 80, .45); }
   .acoes .btn.ico::before { width: 20px; height: 20px; }
   .marca .logo { height: 26px; }
 }
+
+.pop .pop-link { display: inline-block; margin-top: 8px; font-size: 12.5px; font-weight: 600; color: var(--primaria); text-decoration: none; }
+.pop .pop-link:hover { text-decoration: underline; }

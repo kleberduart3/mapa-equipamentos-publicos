@@ -106,7 +106,7 @@ function circulo([lng, lat], r, n = 72) {
   return c;
 }
 
-const PRECISAS = new Set(["inep_catalogo", "cnes", "cnefe_nome_no_cep"]);
+const PRECISAS = new Set(["inep_catalogo", "cnes", "cnefe_nome_no_cep", "prefeitura"]);
 const raioEfetivo = (t, f) => st.raio[t] * (f.properties.rural ? st.cfg.fator_raio_rural : 1);
 
 /* ---------- Início ---------- */
@@ -196,6 +196,7 @@ async function carregarMunicipio(cod) {
   st.mostrar = tipos[0];
   limparSimulacao();
   ["sec-ranking", "sec-simular", "unid-mapa"].forEach((id) => { $(`#${id}`).hidden = Boolean(ESTATICO); });
+  $("#lnk-equipamentos").hidden = Boolean(ESTATICO);
 
   if (!st.map) criarMapa();
   else limparMapa();
@@ -334,6 +335,10 @@ function popupEquip(p, c) {
       .forEach(([rot, k]) => { if (mat[k]) linhas.push([`Matrículas – ${rot}`, fmt(mat[k])]); });
     if (p.mat_medio) linhas.push(["Matrículas – Ensino médio", fmt(p.mat_medio)]);
   }
+  if (p.capacidade != null && st.raio[p.tipo]) {
+    const un = p.tipo === "ubs" ? "pessoas" : "vagas";
+    linhas.push(["Capacidade usada na conta", `${fmt(p.capacidade)} ${un}${p.ajuste_prefeitura ? " · informada pela prefeitura" : ""}`]);
+  }
   if (st.raio[p.tipo]) {
     const r = st.raio[p.tipo] * (p.rural ? st.cfg.fator_raio_rural : 1);
     linhas.push(["Atende quem mora", `${ateMin(r)} (${cercaDe(r)}${APE() ? "" : " em linha reta"})${p.rural ? " · zona rural" : ""}`]);
@@ -341,7 +346,8 @@ function popupEquip(p, c) {
   const alerta = PRECISAS.has(p.fonte_coord) ? "" :
     `<div class="alerta">Localização ${p.fonte_coord === "sem_coordenada" ? "ausente" : "aproximada"} – confirmar com a prefeitura.</div>`;
   return `<div class="pop"><span class="tag" style="background:${c.cor}">${esc(c.rotulo)}</span>
-    <h4>${esc(p.nome)}</h4><dl>${linhas.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("")}</dl>${alerta}</div>`;
+    <h4>${esc(p.nome)}</h4><dl>${linhas.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("")}</dl>${alerta}
+    ${ESTATICO || !st.raio[p.tipo] ? "" : `<a class="pop-link" href="/equipamentos?tipo=${encodeURIComponent(p.tipo)}">${st.cfg.papel === "gestor" ? "Conferir ou ajustar no cadastro" : "Ver no cadastro"} →</a>`}</div>`;
 }
 
 /* ---------- Cobertura, déficit e radar ---------- */

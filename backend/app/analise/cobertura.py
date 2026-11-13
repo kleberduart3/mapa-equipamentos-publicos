@@ -66,6 +66,9 @@ def ofertas(tipo: str, cfg: dict, escolas: gpd.GeoDataFrame, ubs: gpd.GeoDataFra
                     & escolas["dependencia"].isin(redes)].copy()
         f["capacidade"] = f[cfg["capacidade"]].astype(float)
         f["id"], f["nome"], f["rede"] = f["codigo_inep"], f["escola"], f["dependencia"]
+    # capacidade informada pela prefeitura (analise/ajustes.py) vale mais que a estimativa
+    if f"cap_{tipo}" in f:
+        f["capacidade"] = f[f"cap_{tipo}"].astype(float).fillna(f["capacidade"])
     cols = ["id", "nome", "rede", "capacidade", "fonte_coord", "geometry"]
     tem = ~(f.geometry.isna() | f.geometry.is_empty)
     return f.loc[tem, cols].reset_index(drop=True), pd.DataFrame(f.loc[~tem, cols[:-1]])
