@@ -35,9 +35,28 @@ function rotaEstatica(caminho) {
   return `dados/${cod}/${rec}.json`;
 }
 
+/* Chamada à API do servidor. Escritas levam o cabeçalho X-CSRF (proteção contra
+   requisições forjadas por outros sites); sessão expirada volta para o login. */
+async function requisitar(url, opts = {}) {
+  const metodo = (opts.method || "GET").toUpperCase();
+  const headers = { Accept: "application/json", ...(opts.headers || {}) };
+  if (metodo !== "GET" && metodo !== "HEAD") headers["X-CSRF"] = "1";
+  const r = await fetch(url, { credentials: "same-origin", ...opts, headers });
+  if (r.status === 401 && !ESTATICO) {
+    location.href = "/entrar";
+    throw new Error("sessão expirada");
+  }
+  return r;
+}
+
+async function detalheErro(r) {
+  try { const j = await r.json(); if (typeof j.detail === "string") return j.detail; } catch { /* sem corpo */ }
+  return `erro ${r.status}`;
+}
+
 async function api(caminho, opts) {
-  const r = await fetch(ESTATICO ? rotaEstatica(caminho) : `/api${caminho}`, opts);
-  if (!r.ok) throw new Error(`${r.status} ${caminho}`);
+  const r = ESTATICO ? await fetch(rotaEstatica(caminho), opts) : await requisitar(`/api${caminho}`, opts);
+  if (!r.ok) throw new Error(ESTATICO ? `${r.status} ${caminho}` : await detalheErro(r));
   return r.json();
 }
 
@@ -78,28 +97,80 @@ const PRECISAS = new Set(["inep_catalogo", "cnes", "cnefe_nome_no_cep"]);
 const raioEfetivo = (t, f) => st.raio[t] * (f.properties.rural ? st.cfg.fator_raio_rural : 1);
 
 /* ---------- Início ---------- */
+const CHAVE_MUNICIPIO = "mapa.municipio";
+
 async function iniciar() {
+  // No servidor: exige login. Sem servidor (versão estática exportada): lê os JSON pré-calculados.
+  let eu = null;
   try {
-    const r = await fetch("dados/estatico.json");
-    if (r.ok) ESTATICO = await r.json();
-  } catch { /* servidor local: usa a API */ }
+    const r = await fetch("/auth/eu", { credentials: "same-origin", headers: { Accept: "application/json" } });
+    if (r.status === 401) { location.href = "/entrar"; return; }
+    if (r.ok && (r.headers.get("content-type") || "").includes("json")) eu = await r.json();
+  } catch { /* sem servidor */ }
+  if (!eu) {
+    try {
+      const r = await fetch("dados/estatico.json");
+      if (r.ok) ESTATICO = await r.json();
+    } catch { /* nada */ }
+  }
   if (ESTATICO) {
-    $("#btn-upload").hidden = true;
     $("#btn-pdf").textContent = "Baixar relatório PDF";
     $("#btn-pdf").title = "Versão online: relatório pronto com os raios padrão, no modo de distância selecionado";
   }
+  if (eu) ligarConta(eu);
   const munis = await api("/municipios");
+  if (!munis.length) { $("#aviso-vazio").hidden = false; return; }
   const sel = $("#municipio");
-  sel.innerHTML = munis.map((m) => `<option value="${m.codigo}">${esc(m.nome)} – ${m.uf}</option>`).join("");
+  sel.innerHTML = munis.map((m) => `<option value="${esc(m.codigo)}">${esc(m.nome)} – ${esc(m.uf)}</option>`).join("");
   sel.addEventListener("change", () => carregarMunicipio(sel.value));
   ligarUpload();
   ligarPdf();
-  await carregarMunicipio(munis[0].codigo);
+  let lembrado = null;
+  try { lembrado = localStorage.getItem(CHAVE_MUNICIPIO); } catch { /* armazenamento bloqueado */ }
+  const inicial = munis.some((m) => m.codigo === lembrado) ? lembrado : munis[0].codigo;
+  sel.value = inicial;
+  await carregarMunicipio(inicial);
+}
+
+/* ---------- Conta (menu do usuário) ---------- */
+function ligarConta(eu) {
+  $("#conta").hidden = false;
+  const btn = $("#btn-conta"), menu = $("#menu-conta");
+  btn.textContent = eu.nome.split(" ")[0];
+  btn.title = eu.email;
+  $("#lnk-admin").hidden = eu.papel !== "admin";
+  const fechar = () => { menu.hidden = true; btn.setAttribute("aria-expanded", "false"); };
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+    btn.setAttribute("aria-expanded", String(!menu.hidden));
+  };
+  document.addEventListener("click", (e) => { if (!menu.contains(e.target)) fechar(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") fechar(); });
+  $("#btn-sair").onclick = async () => {
+    await requisitar("/auth/sair", { method: "POST" }).catch(() => null);
+    location.href = "/entrar";
+  };
+  const dlg = $("#dlg-senha");
+  $("#btn-trocar-senha").onclick = () => { fechar(); $("#form-senha").reset(); $("#res-senha").textContent = ""; dlg.showModal(); };
+  $("#btn-senha-fechar").onclick = () => dlg.close();
+  $("#form-senha").onsubmit = async (e) => {
+    e.preventDefault();
+    $("#res-senha").textContent = "Salvando…";
+    const r = await requisitar("/auth/trocar-senha", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senha_atual: $("#senha-atual").value, nova: $("#senha-nova").value }),
+    });
+    $("#res-senha").textContent = r.ok ? "Senha alterada. As outras sessões foram encerradas." : await detalheErro(r);
+    if (r.ok) $("#form-senha").reset();
+  };
 }
 
 async function carregarMunicipio(cod) {
   st.cod = cod;
+  try { localStorage.setItem(CHAVE_MUNICIPIO, cod); } catch { /* armazenamento bloqueado */ }
   st.cfg = await api(`/${cod}/config`);
+  $("#btn-upload").hidden = Boolean(ESTATICO) || st.cfg.papel !== "gestor";
   const tipos = Object.keys(st.cfg.tipos);
   tipos.forEach((t) => { st.raio[t] = st.cfg.tipos[t].raio_m; st.visivel[t] = true; });
   st.modo = st.cfg.distancia_padrao || "reta";
@@ -418,8 +489,9 @@ function ligarPdf() {
     btn.disabled = true;
     btn.textContent = "Gerando relatório… (cerca de 40 s)";
     try {
-      const r = await fetch(`/api/${st.cod}/relatorio.pdf?${q}`);
-      if (!r.ok) throw new Error(`erro ${r.status}`);
+      const r = await requisitar(`/api/${st.cod}/relatorio.pdf?${q}`, { headers: { Accept: "application/pdf" } });
+      if (!r.ok) throw new Error(await detalheErro(r));
+
       const blob = await r.blob();
       const nome = (r.headers.get("content-disposition") || "").match(/filename="?([^";]+)/)?.[1] || "relatorio.pdf";
       const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: nome });

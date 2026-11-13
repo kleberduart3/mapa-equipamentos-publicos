@@ -6,7 +6,7 @@
   <title>Mapa de Equipamentos Públicos</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+  <link href="vendor/maplibre-gl-4.7.1/maplibre-gl.css" rel="stylesheet">
   <link href="css/app.css" rel="stylesheet">
 </head>
 <body>
@@ -20,8 +20,16 @@
       <select id="municipio"></select>
     </label>
     <div class="acoes">
-      <button id="btn-upload" class="btn sec">Importar dados da prefeitura</button>
+      <button id="btn-upload" class="btn sec" hidden>Importar dados da prefeitura</button>
       <button id="btn-pdf" class="btn" title="Gera o relatório com os raios atuais do mapa">Exportar relatório PDF</button>
+      <div class="conta" id="conta" hidden>
+        <button id="btn-conta" class="btn sec" aria-haspopup="menu" aria-expanded="false"></button>
+        <div class="menu-conta" id="menu-conta" role="menu" hidden>
+          <a href="/admin" id="lnk-admin" role="menuitem" hidden>Administrar contas</a>
+          <button type="button" id="btn-trocar-senha" role="menuitem">Trocar senha</button>
+          <button type="button" id="btn-sair" role="menuitem">Sair</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -72,7 +80,26 @@
     </form>
   </dialog>
 
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <dialog id="dlg-senha">
+    <form class="dlg" id="form-senha">
+      <h2>Trocar senha</h2>
+      <label class="campo-rot">Senha atual<input type="password" id="senha-atual" autocomplete="current-password" required></label>
+      <label class="campo-rot">Nova senha (mínimo 12 caracteres)<input type="password" id="senha-nova" autocomplete="new-password" minlength="12" required></label>
+      <p id="res-senha" class="nota" aria-live="polite"></p>
+      <div class="dlg-acoes">
+        <button type="button" class="btn sec" id="btn-senha-fechar">Fechar</button>
+        <button type="submit" class="btn">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="aviso-vazio" id="aviso-vazio" hidden>
+    <h2>Nenhum município liberado</h2>
+    <p>Sua conta ainda não tem acesso a nenhum município. Fale com o administrador.</p>
+  </div>
+
+  <script src="vendor/maplibre-gl-4.7.1/maplibre-gl.js"></script>
   <script src="js/app.js"></script>
+
 </body>
 </html>

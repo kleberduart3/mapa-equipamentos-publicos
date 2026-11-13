@@ -6,7 +6,9 @@ Usa a pasta site/ gerada por exportar_estatico.py. O arquivo funciona aberto em
 qualquer hospedagem (ou com duplo clique), sem servidor e sem outras pastas.
 Para caber em poucos MB, leva os raios de --passo em --passo metros (e os padrão).
 Os PDFs não vão dentro: o botão aponta para os PDFs publicados no GitHub Pages.
-Precisa de internet para o mapa de fundo (OpenStreetMap) e as bibliotecas (unpkg).
+A biblioteca do mapa (MapLibre) vai embutida; precisa de internet só para o mapa
+de fundo (OpenStreetMap) e a fonte. ATENÇÃO: o arquivo não tem login – é público
+para quem o receber.
 """
 from __future__ import annotations
 
@@ -83,7 +85,16 @@ def main() -> None:
     html = (site / "index.html").read_text(encoding="utf-8")
     css = (site / "css" / "app.css").read_text(encoding="utf-8")
     js = (site / "js" / "app.js").read_text(encoding="utf-8")
+    vend = site / "vendor" / "maplibre-gl-4.7.1"
+    ml_css = (vend / "maplibre-gl.css").read_text(encoding="utf-8")
+    ml_js = (vend / "maplibre-gl.js").read_text(encoding="utf-8").replace("</script", "<\/script")
+    js = js.replace("</script", "<\/script")
+    html = re.sub(r'<link href="vendor/maplibre-gl-4.7.1/maplibre-gl.css" rel="stylesheet">',
+                  lambda _: f"<style>\n{ml_css}\n</style>", html)
+    html = re.sub(r'<script src="vendor/maplibre-gl-4.7.1/maplibre-gl.js"></script>',
+                  lambda _: f"<script>\n{ml_js}\n</script>", html)
     html = re.sub(r'<link href="css/app.css" rel="stylesheet">', lambda _: f"<style>\n{css}\n</style>", html)
+
     html = re.sub(r'<script src="js/app.js"></script>',
                   lambda _: f'<script type="text/plain" id="dados-embutidos">{b64}</script>\n'
                             f"{CARREGADOR}\n<script>\n{js}\n</script>", html)

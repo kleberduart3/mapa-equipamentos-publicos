@@ -28,3 +28,6 @@ dados/brutos/municipios/*/prefeitura/
 .env
 .env.*
 !.env.exemplo
+
+# Contas de teste do servidor local
+dados/contas_teste_local.txt

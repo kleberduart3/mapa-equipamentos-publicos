@@ -13,6 +13,7 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body { font-family: Inter, system-ui, sans-serif; color: var(--texto); background: var(--fundo); font-size: 14px; }
+[hidden] { display: none !important; }
 .vis-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* Barra superior */
@@ -134,3 +135,51 @@ dialog { border: 0; border-radius: 12px; box-shadow: var(--sombra); padding: 0; 
 .segmentado input:checked + span { background: #fff; color: var(--texto); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
 .segmentado input:focus-visible + span { outline: 2px solid var(--primaria); outline-offset: 1px; }
 .segmentado input:disabled + span { opacity: .45; cursor: not-allowed; }
+
+/* Conta (menu do usuário) */
+.conta { position: relative; }
+.menu-conta { position: absolute; right: 0; top: calc(100% + 6px); min-width: 200px; background: var(--painel);
+  border: 1px solid var(--borda); border-radius: var(--raio); box-shadow: var(--sombra); padding: 6px; z-index: 20;
+  display: flex; flex-direction: column; }
+.menu-conta[hidden] { display: none; }
+.menu-conta a, .menu-conta button { font: inherit; text-align: left; padding: 8px 10px; border: 0; background: none;
+  border-radius: 6px; color: var(--texto); text-decoration: none; cursor: pointer; }
+.menu-conta a:hover, .menu-conta button:hover { background: var(--fundo); }
+.campo-rot { display: flex; flex-direction: column; gap: 4px; font-weight: 500; margin: 10px 0; }
+.campo-rot input, .campo-rot select { font: inherit; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 8px; }
+.aviso-vazio { position: fixed; inset: 56px 0 0 0; display: grid; place-content: center; text-align: center;
+  background: var(--fundo); padding: 16px; }
+
+/* Páginas de login e administração */
+.pagina-login { min-height: 100%; display: grid; place-items: center; padding: 16px; }
+.cartao { width: 100%; max-width: 400px; background: var(--painel); border: 1px solid var(--borda);
+  border-radius: 14px; box-shadow: var(--sombra); padding: 28px 24px; }
+.cartao .marca { margin-bottom: 18px; }
+.cartao h1 { font-size: 20px; margin: 0 0 4px; }
+.cartao .btn { width: 100%; padding: 10px 14px; margin-top: 8px; }
+.erro { color: var(--deficit); font-size: 13px; margin: 8px 0 0; min-height: 1.2em; }
+.ok { color: var(--primaria); font-size: 13px; margin: 8px 0 0; }
+.link-sec { display: inline-block; margin-top: 14px; color: var(--texto-2); font-size: 13px; }
+
+.admin { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.admin h1 { font-size: 20px; }
+.admin section { background: var(--painel); border: 1px solid var(--borda); border-radius: var(--raio); padding: 16px; margin: 16px 0; }
+.admin h2 { font-size: 15px; margin: 0 0 10px; }
+.tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabela th, .tabela td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+.tabela th { color: var(--texto-2); font-weight: 600; }
+.tabela-rolagem { overflow-x: auto; }
+.selo { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--fundo); }
+.selo.alerta { background: #fdecea; color: var(--deficit); }
+.linha-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 12px; }
+.acessos-lista { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 12px; margin: 6px 0; }
+.acessos-lista label { display: flex; align-items: center; gap: 8px; }
+.acessos-lista select { font: inherit; font-size: 12px; padding: 2px 4px; }
+.caixa-link { display: flex; gap: 8px; margin-top: 8px; }
+.caixa-link input { flex: 1; font: inherit; font-size: 12px; padding: 6px 8px; border: 1px solid var(--borda); border-radius: 6px; }
+.acoes-linha { display: flex; flex-wrap: wrap; gap: 6px; }
+.acoes-linha .btn { padding: 4px 10px; font-size: 12px; }
+@media (max-width: 720px) {
+  .topo { grid-template-columns: 1fr auto; height: auto; padding: 8px 16px; }
+  .topo .seletor { grid-column: 1 / -1; order: 3; }
+}

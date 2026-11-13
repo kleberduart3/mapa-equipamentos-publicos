@@ -1,279 +1,177 @@
-"""API do Mapa de Equipamentos Públicos.
+"""API e páginas do Mapa de Equipamentos Públicos.
 
-Rodar (com o ambiente ativado), na raiz do projeto:
+Rodar em desenvolvimento (com o ambiente ativado), na raiz do projeto:
     uvicorn backend.app.api.main:app --port 8000
-e abrir http://localhost:8000
+Primeiro acesso: crie o administrador com
+    python -m backend.app.acesso.cli criar-admin seu@email "Seu Nome"
+e abra o link que o comando mostrar.
+
+Tudo exige login. Cada usuário só enxerga os municípios liberados para ele
+(o administrador vê todos). Ver backend/app/acesso/.
 """
 from __future__ import annotations
 
-import json
+import asyncio
+import logging
+import re
 import shutil
-from functools import lru_cache
+import tempfile
+import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import geopandas as gpd
-import numpy as np
 import pandas as pd
-from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from shapely.geometry import mapping
+from starlette.background import BackgroundTask
 
-from ..analise import cobertura as cob
-from ..config import BRUTOS, RAIZ, SAIDAS, municipio, parametros
+from .. import servicos
+from ..acesso import credenciais as cr
+from ..acesso.configuracao import cfg
+from ..acesso.modelos import Usuario, iniciar_banco, nova_sessao_db
+from ..acesso.rotas import admin as rotas_admin
+from ..acesso.rotas import auth as rotas_auth
+from ..acesso.web import (CabecalhosSeguranca, LimiteTaxa, ProtecaoCSRF, gerir_municipio, ip_cliente,
+                          usuario_opcional, ver_municipio)
+from ..analise.contexto import MunicipioNaoProcessado
+from ..config import RAIZ, municipio, municipios
 
 FRONT = RAIZ / "frontend"
-WGS84 = "EPSG:4326"
-
-from ..estilo import ESTILO, UNIDADE  # noqa: E402
-
-app = FastAPI(title="Mapa de Equipamentos Públicos")
+log = logging.getLogger("mapa")
 
 
-# Carga dos dados (uma vez por processo): backend/app/analise/contexto.py
-from ..analise.contexto import base  # noqa: E402
+@asynccontextmanager
+async def ciclo_de_vida(_: FastAPI):
+    c = cfg()
+    c.validar_producao()
+    iniciar_banco(c.db_url)
+    with nova_sessao_db() as s:
+        cr.limpar_expiradas(s)
+        s.commit()
+    if c.aquecer_ao_iniciar:
+        def tarefa():
+            for m in municipios():
+                if m.processado:
+                    try:
+                        servicos.aquecer(m.cod)
+                    except Exception:            # noqa: BLE001 – aquecimento é opcional
+                        log.exception("falha ao pré-carregar %s", m)
+        threading.Thread(target=tarefa, daemon=True, name="aquecer").start()
+    yield
 
 
-@app.on_event("startup")
-def _aquecer() -> None:
-    """Carrega dados e rede em segundo plano para a primeira troca de modo ser rápida."""
-    import threading
-
-    def tarefa():
-        b = base()
-        if b.tem_rede:
-            for t, c in parametros()["equipamentos"].items():
-                _cobertura(t, int(c["raio_m"]), "rede")
-            _prioridade_rede()
-
-    threading.Thread(target=tarefa, daemon=True).start()
+app = FastAPI(title="Mapa de Equipamentos Públicos", lifespan=ciclo_de_vida,
+              docs_url=None, redoc_url=None, openapi_url=None)   # sem documentação pública da API
+app.add_middleware(ProtecaoCSRF)
+app.add_middleware(CabecalhosSeguranca)
+app.include_router(rotas_auth)
+app.include_router(rotas_admin)
 
 
-def _checa_municipio(cod: str) -> None:
-    if cod != municipio()["codigo_ibge"]:
-        raise HTTPException(404, "Município ainda não processado")
+@app.exception_handler(MunicipioNaoProcessado)
+async def _nao_processado(_, __):
+    return JSONResponse({"detail": "Município ainda não processado."}, status_code=404)
 
 
-def _num(v):
-    if v is None or (isinstance(v, float) and np.isnan(v)):
-        return None
-    if isinstance(v, (np.integer,)):
-        return int(v)
-    if isinstance(v, (np.floating,)):
-        return float(v)
-    if isinstance(v, (np.bool_,)):
-        return bool(v)
-    return v
+@app.exception_handler(servicos.TipoDesconhecido)
+async def _tipo(_, __):
+    return JSONResponse({"detail": "Tipo de equipamento desconhecido."}, status_code=404)
 
 
-def _fc(features: list[dict]) -> dict:
-    return {"type": "FeatureCollection", "features": features}
-
-
-# --------------------------------------------------------------------------- #
-# Endpoints
-# --------------------------------------------------------------------------- #
-@app.get("/api/municipios")
-def municipios():
-    m = municipio()
-    return [{"codigo": m["codigo_ibge"], "nome": m["nome"], "uf": m["uf"]}]
-
-
-@app.get("/api/{cod}/config")
-def config(cod: str):
-    _checa_municipio(cod)
-    P = parametros()
-    b = base()
-    lim = b.limite.to_crs(WGS84).total_bounds
-    tipos = {}
-    for t, c in P["equipamentos"].items():
-        tipos[t] = {"rotulo": c["rotulo"], "raio_m": c["raio_m"], **ESTILO.get(t, {"cor": "#555", "icone": "ponto"}),
-                    "unidade": UNIDADE.get(t, "pessoas"), "redes": c.get("redes", ["Municipal"])}
-    return {"municipio": municipio(), "fator_raio_rural": b.fr, "tipos": tipos,
-            "bbox": [float(v) for v in lim], "tem_rede": b.tem_rede,
-            "distancia_padrao": P.get("distancia_padrao", "reta") if b.tem_rede else "reta"}
-
-
-@app.get("/api/{cod}/limite")
-def limite(cod: str):
-    _checa_municipio(cod)
-    g = base().limite.to_crs(WGS84)
-    return _fc([{"type": "Feature", "properties": {}, "geometry": mapping(g.geometry.iloc[0])}])
-
-
-@app.get("/api/{cod}/equipamentos")
-def equipamentos(cod: str):
-    """Um registro por equipamento e tipo atendido (uma escola pode ter vários)."""
-    _checa_municipio(cod)
-    b = base()
-    P = parametros()
-    feats = []
-    for t, cfg in P["equipamentos"].items():
-        fac, _ = cob.ofertas(t, cfg, b.escolas, b.ubs)
-        if not len(fac):
-            continue
-        sit = b.situacao(fac.geometry)
-        ll = fac.to_crs(WGS84)
-        src = b.ubs.set_index("cnes") if cfg["fonte_dados"] == "cnes" else b.escolas.set_index("codigo_inep")
-        for i, r in enumerate(fac.itertuples()):
-            s = src.loc[r.id]
-            if isinstance(s, pd.DataFrame):
-                s = s.iloc[0]
-            rural = sit["SITUACAO"].iloc[i] != "Urbana"
-            props = {
-                "id": r.id, "tipo": t, "nome": r.nome, "rede": r.rede, "capacidade": _num(r.capacidade),
-                "fonte_coord": r.fonte_coord, "bairro": _num(sit["NM_BAIRRO"].iloc[i]), "rural": bool(rural),
-                "raio_m": cfg["raio_m"] * (b.fr if rural else 1),
-            }
-            if cfg["fonte_dados"] == "cnes":
-                props.update({"equipes": _num(s["equipes_ab"]), "endereco": f"{s['logradouro']}, {s['numero']} – {s['bairro']}"})
-            else:
-                props.update({k: _num(s[k]) for k in ["mat_creche", "mat_pre_escola", "mat_fund_iniciais", "mat_fund_finais"]})
-            feats.append({"type": "Feature", "properties": props,
-                          "geometry": {"type": "Point", "coordinates": [ll.geometry.iloc[i].x, ll.geometry.iloc[i].y]}})
-    # Contexto: ensino médio das redes estadual/federal (fora dos indicadores municipais)
-    e = b.escolas
-    ctx = e[e["em_funcionamento"].astype(bool) & e["oferta_medio"].astype(bool)
-            & e["dependencia"].isin(["Estadual", "Federal"]) & e["latitude"].notna()].to_crs(WGS84)
-    for r in ctx.itertuples():
-        feats.append({"type": "Feature", "properties": {
-            "id": r.codigo_inep, "tipo": "contexto_medio", "nome": r.escola, "rede": r.dependencia,
-            "fonte_coord": r.fonte_coord, "bairro": None, "rural": False, "mat_medio": _num(r.mat_medio)},
-            "geometry": {"type": "Point", "coordinates": [r.geometry.x, r.geometry.y]}})
-    return _fc(feats)
-
-
-def _medidor(modo: str):
-    try:
-        return base().medidor(modo)
-    except FileNotFoundError as e:
-        raise HTTPException(409, str(e)) from e
-
-
-@lru_cache(maxsize=96)
-def _cobertura(t: str, raio: int, modo: str = "reta") -> dict:
-    b = base()
-    P = parametros()
-    md = _medidor(modo)
-    cfg = {**P["equipamentos"][t], "raio_m": raio}
-    fac, sem = cob.ofertas(t, cfg, b.escolas, b.ubs)
-    r = cob.calcular(t, cfg, b.pts, fac, sem, b.fr, tree=b.tree, medidor=md)
-
-    # déficit por hexágono
-    df = pd.DataFrame({"h3": b.pts["h3"], "sem_cob": r.sem_cobertura, "def_cap": r.deficit_cap,
-                       "pop_desc": np.where(r.coberto, 0, r.pop_faixa)})
-    g = df.groupby("h3").sum()
-    g["deficit"] = g["sem_cob"] + g["def_cap"]
-    g = g[g["deficit"] > 0.5]
-    hexes = [{"type": "Feature",
-              "properties": {"h3": h, "deficit": round(float(v["deficit"]), 1),
-                             "sem_cobertura": round(float(v["sem_cob"]), 1),
-                             "deficit_capacidade": round(float(v["def_cap"]), 1),
-                             "pop_descoberta": round(float(v["pop_desc"]), 1)},
-              "geometry": {"type": "Polygon", "coordinates": [b.hex_poly[h] + [b.hex_poly[h][0]]]}}
-             for h, v in g.iterrows()]
-
-    # sugestões (radar pulsante)
-    rp = cob.raios(b.pts, raio, b.fr)
-    sug = cob.sugerir_locais(t, r, b.pts, b.cand_xy, b.hex_ids, rp, int(P["prioridade"]["sugestoes_por_tipo"]),
-                             float(P["prioridade"]["ganho_minimo"][t]), b.tree, medidor=md)
-    radar = []
-    if len(sug):
-        pts = gpd.GeoSeries(gpd.points_from_xy(sug["x"], sug["y"]), crs=b.pts.crs)
-        sit = b.situacao(pts)
-        ll = pts.to_crs(WGS84)
-        for i, s in sug.iterrows():
-            radar.append({"type": "Feature", "properties": {
-                "tipo": t, "ordem": int(s["ordem"]), "bairro": _num(sit["NM_BAIRRO"].iloc[i]),
-                "demanda_absorvida": round(float(s["demanda_absorvida"])),
-                "sem_cobertura": round(float(s["demanda_sem_cobertura_absorvida"]))},
-                "geometry": {"type": "Point", "coordinates": [ll.iloc[i].x, ll.iloc[i].y]}})
-
-    rural = b.pts["rural"].to_numpy()
-    ind = {
-        "tipo": t, "raio_m": raio, "modo": modo, "pop_faixa": round(float(r.pop_faixa.sum())),
-        "pct_coberta": round(cob.pct_coberto(r), 1),
-        "pct_coberta_rural": round(float(100 * r.pop_faixa[r.coberto & rural].sum() / max(r.pop_faixa[rural].sum(), 1)), 1),
-        "pop_descoberta": round(float(r.pop_faixa[~r.coberto].sum())),
-        "demanda_meta": round(float(r.demanda.sum())),
-        "demanda_sem_cobertura": round(float(r.sem_cobertura.sum())),
-        "deficit_capacidade": round(float(r.deficit_cap.sum())),
-        "equipamentos": int(len(fac)),
-    }
-    return {"indicadores": ind, "hex": _fc(hexes), "radar": _fc(radar)}
+@app.exception_handler(Exception)
+async def _erro_interno(request: Request, exc: Exception):
+    # o detalhe vai para o log do servidor, nunca para o navegador
+    log.exception("erro em %s %s", request.method, request.url.path)
+    return JSONResponse({"detail": "Erro interno. Tente de novo; se persistir, avise o administrador."},
+                        status_code=500)
 
 
 MODO = Query("reta", pattern="^(reta|rede)$")
+RAIO = Query(..., ge=50, le=20000)
+
+
+def _medidor(cod: str, modo: str) -> None:
+    from ..analise.contexto import base
+    try:
+        base(cod).medidor(modo)
+    except FileNotFoundError:
+        raise HTTPException(409, "Distância a pé indisponível: malha viária ainda não preparada.") from None
+
+
+# --------------------------------------------------------------------------- #
+# Dados do mapa (todas exigem acesso ao município)
+# --------------------------------------------------------------------------- #
+@app.get("/api/municipios")
+def listar_municipios(u: Usuario | None = Depends(usuario_opcional)):
+    if u is None:
+        raise HTTPException(401, "Faça login para continuar.")
+    return [{"codigo": m.cod, "nome": m.nome, "uf": m.uf, "papel": u.papel_em(m.cod)}
+            for m in municipios() if m.processado and u.papel_em(m.cod)]
+
+
+@app.get("/api/{cod}/config")
+def config(cod: str, acesso=Depends(ver_municipio)):
+    return {**servicos.config(cod), "papel": acesso[1]}
+
+
+@app.get("/api/{cod}/limite")
+def limite(cod: str, _=Depends(ver_municipio)):
+    return servicos.limite(cod)
+
+
+@app.get("/api/{cod}/equipamentos")
+def equipamentos(cod: str, _=Depends(ver_municipio)):
+    return servicos.equipamentos(cod)
 
 
 @app.get("/api/{cod}/cobertura")
-def cobertura(cod: str, tipo: str, raio: int = Query(..., ge=50, le=20000), modo: str = MODO):
-    _checa_municipio(cod)
-    if tipo not in parametros()["equipamentos"]:
-        raise HTTPException(404, "tipo desconhecido")
-    return JSONResponse(_cobertura(tipo, int(raio), modo))
-
-
-@lru_cache(maxsize=48)
-def _areas(t: str, raio: int) -> dict:
-    """Área alcançável a pé de cada equipamento (vias dentro do raio + faixa de 40 m)."""
-    b = base()
-    rede = _medidor("rede").rede
-    cfg = {**parametros()["equipamentos"][t], "raio_m": raio}
-    fac, _ = cob.ofertas(t, cfg, b.escolas, b.ubs)
-    if not len(fac):
-        return _fc([])
-    rural = (b.situacao(fac.geometry)["SITUACAO"] != "Urbana").to_numpy()
-    r = np.where(rural, raio * b.fr, raio).astype(float)
-    xy = np.column_stack([fac.geometry.x, fac.geometry.y])
-    g = gpd.GeoSeries(rede.areas_servico(xy, r), crs=b.pts.crs).to_crs(WGS84).simplify(0.00005)
-    return _fc([{"type": "Feature", "properties": {"id": fac["id"].iloc[i], "tipo": t, "raio_m": float(r[i])},
-                 "geometry": mapping(g.iloc[i])} for i in range(len(fac))])
+def cobertura(cod: str, tipo: str = Query(..., max_length=40), raio: int = RAIO, modo: str = MODO,
+              _=Depends(ver_municipio)):
+    servicos.checa_tipo(cod, tipo)
+    _medidor(cod, modo)
+    return JSONResponse(servicos.cobertura(cod, tipo, int(raio), modo))
 
 
 @app.get("/api/{cod}/areas")
-def areas(cod: str, tipo: str, raio: int = Query(..., ge=50, le=20000)):
+def areas(cod: str, tipo: str = Query(..., max_length=40), raio: int = RAIO, _=Depends(ver_municipio)):
     """Polígonos de alcance a pé (modo 'rede'), no lugar dos círculos."""
-    _checa_municipio(cod)
-    if tipo not in parametros()["equipamentos"]:
-        raise HTTPException(404, "tipo desconhecido")
-    return JSONResponse(_areas(tipo, int(raio)))
+    servicos.checa_tipo(cod, tipo)
+    _medidor(cod, "rede")
+    return JSONResponse(servicos.areas(cod, tipo, int(raio)))
 
 
 @app.get("/api/{cod}/indicadores")
-def indicadores(cod: str):
-    _checa_municipio(cod)
-    return json.loads((SAIDAS / "indicadores.json").read_text(encoding="utf-8"))
-
-
-@lru_cache(maxsize=2)
-def _prioridade_rede() -> gpd.GeoDataFrame:
-    from ..relatorio.gerar import analisar
-    _medidor("rede")
-    return analisar(None, "rede")["hex"]
+def indicadores(cod: str, _=Depends(ver_municipio)):
+    return servicos.indicadores(cod)
 
 
 @app.get("/api/{cod}/prioridade")
-def prioridade(cod: str, modo: str = MODO):
-    """Índice de prioridade com os raios padrão do parametros.yaml."""
-    _checa_municipio(cod)
-    h = (_prioridade_rede() if modo == "rede" else gpd.read_parquet(SAIDAS / "cobertura_hex.parquet")).to_crs(WGS84)
-    h = h[h["prioridade_geral"] > 1][["h3", "prioridade_geral", "geometry"]]
-    h["prioridade_geral"] = h["prioridade_geral"].round(1)
-    return JSONResponse(json.loads(h.to_json()))
+def prioridade(cod: str, modo: str = MODO, _=Depends(ver_municipio)):
+    """Índice de prioridade com os raios padrão do município."""
+    _medidor(cod, modo)
+    return JSONResponse(servicos.prioridade(cod, modo))
+
+
+# --------------------------------------------------------------------------- #
+# Relatório PDF (pesado: ~40 s de Chromium) – fila e limite por usuário
+# --------------------------------------------------------------------------- #
+_fila_pdf = asyncio.Semaphore(cfg().pdf_simultaneos)
+_limite_pdf = LimiteTaxa(cfg().pdf_por_usuario_hora, 3600)
 
 
 @app.get("/api/{cod}/relatorio.pdf")
-def relatorio(cod: str, request: Request):
-    """Relatório PDF com os raios atuais do mapa (?creche=500&ubs=1000…)."""
-    _checa_municipio(cod)
-    from ..relatorio.gerar import gerar_pdf
+async def relatorio(cod: str, request: Request, acesso=Depends(ver_municipio)):
+    """Relatório PDF com os raios atuais do mapa (?creche=500&ubs=1000&modo=rede)."""
+    from ..relatorio.gerar import gerar_pdf, nome_arquivo
 
-    tipos = parametros()["equipamentos"]
+    u = acesso[0]
+    tipos = servicos.tipos(cod)
     modo = request.query_params.get("modo", "reta")
     if modo not in ("reta", "rede"):
         raise HTTPException(400, "modo inválido")
-    _medidor(modo)
     raios = {}
     for t in tipos:
         v = request.query_params.get(t)
@@ -281,58 +179,140 @@ def relatorio(cod: str, request: Request):
             if not v.isdigit() or not 50 <= int(v) <= 20000:
                 raise HTTPException(400, f"raio inválido para {t}")
             raios[t] = int(v)
-    destino = gerar_pdf(raios=raios, modo=modo)
-    return FileResponse(destino, media_type="application/pdf", filename=destino.name)
+    await run_in_threadpool(_medidor, cod, modo)
+    if not _limite_pdf.permitir(f"u{u.id}"):
+        raise HTTPException(429, "Limite de relatórios por hora atingido. Tente mais tarde.")
+    if _fila_pdf.locked():
+        raise HTTPException(503, "Outro relatório está sendo gerado. Tente de novo em um minuto.")
+    async with _fila_pdf:
+        pasta = Path(tempfile.mkdtemp(prefix="relatorio_"))
+        m = municipio(cod)
+        destino = pasta / f"relatorio_{nome_arquivo(m.nome)}{'_a_pe' if modo == 'rede' else ''}.pdf"
+        try:
+            await run_in_threadpool(gerar_pdf, cod, destino, raios, modo)
+        except Exception:
+            shutil.rmtree(pasta, ignore_errors=True)
+            raise
+    with nova_sessao_db() as s:
+        cr.registrar(s, "relatorio_pdf", u.id, detalhe=f"{cod} modo={modo} raios={raios}", ip=ip_cliente(request))
+        s.commit()
+    return FileResponse(destino, media_type="application/pdf", filename=destino.name,
+                        background=BackgroundTask(shutil.rmtree, pasta, ignore_errors=True))
 
 
+# --------------------------------------------------------------------------- #
+# Upload do cadastro do IPTU (só gestor do município)
+# --------------------------------------------------------------------------- #
 EXT_OK = {".csv", ".zip", ".gpkg", ".geojson", ".json", ".shp", ".dbf", ".shx", ".prj", ".cpg"}
+_NOME_OK = re.compile(r"^[\w.\- ]{1,120}$")
 
 
 @app.post("/api/{cod}/upload-iptu")
-async def upload_iptu(cod: str, arquivos: list[UploadFile] = File(...)):
+async def upload_iptu(cod: str, request: Request, arquivos: list[UploadFile] = File(...),
+                      acesso=Depends(gerir_municipio)):
     """Recebe o cadastro do IPTU (CSV com coordenadas, GeoPackage, GeoJSON ou
     shapefile — .zip ou os arquivos .shp/.dbf/.shx/.prj juntos) e confere o conteúdo."""
-    _checa_municipio(cod)
-    destino = BRUTOS / "prefeitura" / "iptu"
-    if destino.exists():
-        shutil.rmtree(destino)
-    destino.mkdir(parents=True)
-    nomes = []
-    for a in arquivos:
-        nome = Path(a.filename or "").name
-        if Path(nome).suffix.lower() not in EXT_OK:
-            raise HTTPException(400, f"Formato não aceito: {nome}")
-        (destino / nome).write_bytes(await a.read())
-        nomes.append(nome)
-    principal = next((destino / n for n in nomes if n.lower().endswith((".shp", ".gpkg", ".geojson", ".json", ".zip"))), None)
+    u = acesso[0]
+    if len(arquivos) > 10:
+        raise HTTPException(400, "Envie no máximo 10 arquivos.")
+    limite_bytes = cfg().upload_max_mb * 1024 * 1024
+    m = municipio(cod)
+    tmp = Path(tempfile.mkdtemp(prefix="iptu_"))
+    try:
+        total, nomes = 0, []
+        for a in arquivos:
+            nome = Path(a.filename or "").name
+            if not _NOME_OK.match(nome) or Path(nome).suffix.lower() not in EXT_OK:
+                raise HTTPException(400, f"Formato ou nome de arquivo não aceito: {nome[:80]}")
+            with open(tmp / nome, "wb") as f:
+                while bloco := await a.read(1 << 20):
+                    total += len(bloco)
+                    if total > limite_bytes:
+                        raise HTTPException(413, f"Arquivos acima de {cfg().upload_max_mb} MB.")
+                    f.write(bloco)
+            nomes.append(nome)
+        resultado = await run_in_threadpool(_conferir_iptu, cod, tmp, nomes)
+        if resultado["ok"]:
+            destino = m.prefeitura / "iptu"
+            if destino.exists():
+                shutil.rmtree(destino)
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(tmp), str(destino))
+        with nova_sessao_db() as s:
+            cr.registrar(s, "upload_iptu", u.id, detalhe=f"{cod} {nomes} ok={resultado['ok']}", ip=ip_cliente(request))
+            s.commit()
+        return resultado
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _conferir_iptu(cod: str, pasta: Path, nomes: list[str]) -> dict:
+    from ..analise.contexto import base
+    principal = next((pasta / n for n in nomes if n.lower().endswith((".shp", ".gpkg", ".geojson", ".json", ".zip"))), None)
     try:
         if principal is not None:
             g = gpd.read_file(principal)
         else:
-            csv = destino / next(n for n in nomes if n.lower().endswith(".csv"))
-            df = pd.read_csv(csv, sep=None, engine="python")
-            lat = next((c for c in df.columns if c.lower() in ("lat", "latitude", "y")), None)
-            lon = next((c for c in df.columns if c.lower() in ("lon", "lng", "longitude", "x")), None)
+            csv = next((pasta / n for n in nomes if n.lower().endswith(".csv")), None)
+            if csv is None:
+                return {"ok": False, "mensagem": "Envie um CSV, GeoPackage, GeoJSON ou shapefile."}
+            df = pd.read_csv(csv, sep=None, engine="python", nrows=2_000_000)
+            lat = next((c for c in df.columns if str(c).lower() in ("lat", "latitude", "y")), None)
+            lon = next((c for c in df.columns if str(c).lower() in ("lon", "lng", "longitude", "x")), None)
             if not (lat and lon):
-                return {"ok": False, "mensagem": "CSV sem colunas de coordenadas (latitude/longitude). Colunas: " + ", ".join(df.columns[:20])}
-            g = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df[lon], df[lat]), crs=WGS84)
-    except Exception as e:  # noqa: BLE001
-        return {"ok": False, "mensagem": f"Não consegui ler o arquivo: {e}"}
+                return {"ok": False, "mensagem": "CSV sem colunas de coordenadas (latitude/longitude). Colunas: "
+                        + ", ".join(map(str, df.columns[:20]))}
+            g = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df[lon], df[lat]), crs="EPSG:4326")
+    except Exception:                                   # noqa: BLE001
+        log.exception("IPTU ilegível (%s)", cod)
+        return {"ok": False, "mensagem": "Não consegui ler o arquivo. Confira o formato e tente de novo."}
     if g.crs is None:
         return {"ok": False, "mensagem": "Arquivo sem sistema de coordenadas (.prj ausente)."}
-    g = g.to_crs(base().pts.crs)
-    dentro = g.geometry.representative_point().within(base().limite.geometry.iloc[0].buffer(100)).mean()
+    b = base(cod)
+    g = g.to_crs(b.pts.crs)
+    dentro = g.geometry.representative_point().within(b.limite.geometry.iloc[0].buffer(100)).mean()
     return {"ok": True, "registros": int(len(g)), "pct_dentro_municipio": round(float(100 * dentro), 1),
             "colunas": list(map(str, g.columns[:30])),
             "mensagem": "Cadastro recebido. O refinamento da densidade com o IPTU entra numa próxima etapa."}
 
 
 # --------------------------------------------------------------------------- #
-# Frontend
+# Páginas
 # --------------------------------------------------------------------------- #
-@app.get("/")
-def index():
-    return FileResponse(FRONT / "index.html")
+def _pagina(nome: str) -> FileResponse:
+    return FileResponse(FRONT / nome, headers={"Cache-Control": "no-store"})
 
 
-app.mount("/", StaticFiles(directory=FRONT), name="front")
+@app.get("/", include_in_schema=False)
+def inicio(u: Usuario | None = Depends(usuario_opcional)):
+    return _pagina("index.html") if u else RedirectResponse("/entrar", status_code=303)
+
+
+@app.get("/entrar", include_in_schema=False)
+def pagina_entrar(u: Usuario | None = Depends(usuario_opcional)):
+    return RedirectResponse("/", status_code=303) if u else _pagina("entrar.html")
+
+
+@app.get("/definir-senha", include_in_schema=False)
+def pagina_definir_senha():
+    return _pagina("definir-senha.html")
+
+
+@app.get("/admin", include_in_schema=False)
+def pagina_admin(u: Usuario | None = Depends(usuario_opcional)):
+    if u is None:
+        return RedirectResponse("/entrar", status_code=303)
+    if not u.admin:
+        return RedirectResponse("/", status_code=303)
+    return _pagina("admin.html")
+
+
+@app.get("/saude", include_in_schema=False)
+def saude():
+    return {"ok": True}
+
+
+# arquivos estáticos (sem dados): só as pastas de recursos, nunca o index.html direto
+for pasta in ("css", "js", "vendor", "img"):
+    if (FRONT / pasta).is_dir():
+        app.mount(f"/{pasta}", StaticFiles(directory=FRONT / pasta), name=pasta)

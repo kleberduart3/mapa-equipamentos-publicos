@@ -23,6 +23,11 @@ dependencies:
   - python-multipart  # upload de arquivos da prefeitura
   - jinja2            # template HTML do relatório
   - pytest
+  - httpx             # cliente de teste da API
+  - sqlalchemy>=2.0   # contas, sessões e auditoria
+  - argon2-cffi       # hash de senhas
+  - pydantic-settings # configuração por variáveis de ambiente
+
   - jupyterlab
   - osmnx             # fase 2: malha viária do OpenStreetMap (menor caminho: scipy)
   - pip

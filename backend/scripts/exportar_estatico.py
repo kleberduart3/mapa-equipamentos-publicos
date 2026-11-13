@@ -1,6 +1,9 @@
-"""Exporta uma versão estática do mapa (GitHub Pages: sem Python no servidor).
+"""Exporta uma versão estática do mapa de UM município (sem servidor e SEM LOGIN).
 
-    python backend/scripts/exportar_estatico.py [--passo 100] [--saida site]
+    python backend/scripts/exportar_estatico.py --municipio CÓDIGO [--passo 100] [--saida site]
+
+ATENÇÃO: o resultado é público para quem tiver os arquivos. Use só quando a
+prefeitura autorizar a divulgação; a versão normal é o servidor com login.
 
 Pré-calcula as respostas da API para cada raio (de 200 a 3000 m, no passo
 indicado), nos dois modos de distância, e copia o frontend. O app.js detecta o
@@ -19,8 +22,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from backend.app.api import main as api  # noqa: E402
-from backend.app.config import RAIZ, municipio, parametros  # noqa: E402
+from backend.app import servicos  # noqa: E402
+from backend.app.config import RAIZ, municipio_cli  # noqa: E402
+from backend.app.relatorio.gerar import nome_arquivo  # noqa: E402
 
 RAIO_MIN, RAIO_MAX = 200, 3000
 
@@ -43,19 +47,21 @@ def grava(caminho: Path, dados) -> int:
 
 
 def main() -> None:
+    m, resto = municipio_cli()
     ap = argparse.ArgumentParser()
     ap.add_argument("--passo", type=int, default=100)
     ap.add_argument("--saida", type=Path, default=RAIZ / "site")
-    a = ap.parse_args()
+    a = ap.parse_args(resto)
     t0 = time.time()
     out: Path = a.saida
     if out.exists():
         shutil.rmtree(out)
-    shutil.copytree(RAIZ / "frontend", out)
+    shutil.copytree(RAIZ / "frontend", out, ignore=shutil.ignore_patterns("entrar.html", "definir-senha.html",
+                                                                          "admin.html", "entrar.js", "definir-senha.js", "admin.js"))
     (out / ".nojekyll").write_text("")
-    cod = municipio()["codigo_ibge"]
+    cod = m.cod
     d = out / "dados" / cod
-    P = parametros()
+    P = m.P
     tipos = list(P["equipamentos"])
     raios = list(range(RAIO_MIN, RAIO_MAX + 1, a.passo))
     for c in P["equipamentos"].values():                       # o raio padrão precisa existir
@@ -64,30 +70,30 @@ def main() -> None:
     raios.sort()
     tam = 0
 
-    grava(out / "dados" / "municipios.json", api.municipios())
-    tam += grava(d / "config.json", api.config(cod))
-    tam += grava(d / "limite.json", api.limite(cod))
-    tam += grava(d / "equipamentos.json", api.equipamentos(cod))
+    grava(out / "dados" / "municipios.json", [{"codigo": m.cod, "nome": m.nome, "uf": m.uf}])
+    tam += grava(d / "config.json", {**servicos.config(cod), "papel": "consulta"})
+    tam += grava(d / "limite.json", servicos.limite(cod))
+    tam += grava(d / "equipamentos.json", servicos.equipamentos(cod))
     for modo in ("reta", "rede"):
-        r = api.prioridade(cod, modo)
-        tam += grava(d / f"prioridade_{modo}.json", json.loads(r.body))
+        tam += grava(d / f"prioridade_{modo}.json", servicos.prioridade(cod, modo))
     print(f"base: {time.time() - t0:.0f} s")
 
     for t in tipos:
         for raio in raios:
             for modo in ("reta", "rede"):
-                tam += grava(d / "cobertura" / modo / f"{t}_{raio}.json", api._cobertura(t, raio, modo))
-            tam += grava(d / "areas" / f"{t}_{raio}.json", api._areas(t, raio))
-        api._cobertura.cache_clear()
-        api._areas.cache_clear()
+                tam += grava(d / "cobertura" / modo / f"{t}_{raio}.json", servicos.cobertura(cod, t, raio, modo))
+            tam += grava(d / "areas" / f"{t}_{raio}.json", servicos.areas(cod, t, raio))
+        servicos.cobertura.cache_clear()
+        servicos.areas.cache_clear()
         print(f"{t}: {time.time() - t0:.0f} s, {tam / 1e6:.0f} MB até agora", flush=True)
 
     # relatórios com os raios padrão
     from backend.app.relatorio.gerar import gerar_pdf
     pdfs = {}
     for modo in ("reta", "rede"):
-        nome = f"relatorio_{municipio()['nome'].lower()}_{modo}.pdf"
-        gerar_pdf(d / nome, modo=modo)
+        nome = f"relatorio_{nome_arquivo(m.nome)}_{modo}.pdf"
+        gerar_pdf(cod, d / nome, modo=modo)
+
         pdfs[modo] = f"dados/{cod}/{nome}"
 
     grava(out / "dados" / "estatico.json", {

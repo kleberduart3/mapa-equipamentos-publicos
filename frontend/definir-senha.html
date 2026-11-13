@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <title>Definir senha – Mapa de Equipamentos Públicos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="css/app.css" rel="stylesheet">
+</head>
+<body>
+  <main class="pagina-login">
+    <div class="cartao">
+      <div class="marca">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+        <span>Mapa de Equipamentos Públicos</span>
+      </div>
+      <p class="nota" id="carregando">Conferindo o link…</p>
+
+      <form id="form-senha" hidden novalidate>
+        <h1 id="titulo">Criar senha</h1>
+        <p class="nota" id="quem"></p>
+        <input type="email" id="email" autocomplete="username" hidden readonly>
+        <label class="campo-rot">Nova senha<input type="password" id="senha" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+        <label class="campo-rot">Repita a senha<input type="password" id="senha2" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+        <p class="nota">Use pelo menos 12 caracteres. Uma frase com algumas palavras é fácil de lembrar e difícil de adivinhar.</p>
+        <p class="erro" id="erro" role="alert" aria-live="assertive"></p>
+        <button class="btn" type="submit" id="btn-salvar">Salvar senha</button>
+      </form>
+
+      <div id="feito" hidden>
+        <h1>Senha definida</h1>
+        <p class="ok">Agora é só entrar com o seu e-mail e a nova senha.</p>
+        <a class="btn" href="/entrar" style="display:block;text-align:center;text-decoration:none">Entrar</a>
+      </div>
+
+      <div id="invalido" hidden>
+        <h1>Link inválido ou expirado</h1>
+        <p class="nota">Os links valem por tempo limitado e uma única vez. Peça um novo ao administrador.</p>
+        <a class="link-sec" href="/entrar">Ir para o login</a>
+      </div>
+    </div>
+  </main>
+  <script src="js/definir-senha.js"></script>
+</body>
+</html>

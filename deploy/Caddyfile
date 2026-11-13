@@ -1,0 +1,28 @@
+# HTTPS automático (Let's Encrypt) para o domínio em MAPA_DOMINIO.
+{
+	email {$MAPA_EMAIL_CERTIFICADO}
+}
+
+{$MAPA_DOMINIO} {
+	encode zstd gzip
+	request_body {
+		max_size 210MB
+	}
+	header {
+		-Server
+	}
+	reverse_proxy app:8000 {
+		transport http {
+			read_timeout 5m      # relatório PDF demora ~1 min
+		}
+	}
+	log {
+		output stdout
+		format json
+	}
+}
+
+# www → domínio principal
+www.{$MAPA_DOMINIO} {
+	redir https://{$MAPA_DOMINIO}{uri} permanent
+}

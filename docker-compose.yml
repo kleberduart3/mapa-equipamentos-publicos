@@ -1,0 +1,49 @@
+# Produção: docker compose up -d   (antes: cp .env.exemplo .env e preencha)
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./dados:/app/dados              # dados processados dos municípios
+      - ./config:/app/config:ro         # parâmetros (editar no host e reiniciar)
+      - banco:/var/lib/mapa             # contas e sessões (SQLite)
+    expose: ["8000"]                    # só na rede interna: ninguém acessa sem passar pelo Caddy
+    environment:
+      HOME: /tmp                        # Chromium (relatório PDF) precisa de uma pasta gravável
+    mem_limit: 6g
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp:size=2g"]
+
+  # Processamento de municípios (não fica rodando):
+  #   docker compose run --rm pipeline python backend/scripts/processar_municipio.py CÓDIGO_IBGE
+  pipeline:
+    build: .
+    profiles: ["ferramentas"]
+    env_file: .env
+    volumes:
+      - ./dados:/app/dados
+      - ./config:/app/config            # cria config/municipios/{código}.yaml
+      - banco:/var/lib/mapa
+    environment:
+      HOME: /tmp
+    security_opt: ["no-new-privileges:true"]
+
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ["80:80", "443:443", "443:443/udp"]
+    env_file: .env
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data                # certificados HTTPS (Let's Encrypt)
+      - caddy_config:/config
+    security_opt: ["no-new-privileges:true"]
+
+volumes:
+  banco:
+  caddy_data:
+  caddy_config:

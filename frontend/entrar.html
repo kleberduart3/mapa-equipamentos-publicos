@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Entrar – Mapa de Equipamentos Públicos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="css/app.css" rel="stylesheet">
+</head>
+<body>
+  <main class="pagina-login">
+    <div class="cartao">
+      <div class="marca">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+        <span>Mapa de Equipamentos Públicos</span>
+      </div>
+
+      <form id="form-entrar" novalidate>
+        <h1>Entrar</h1>
+        <label class="campo-rot">E-mail<input type="email" id="email" autocomplete="username" required maxlength="254"></label>
+        <label class="campo-rot">Senha<input type="password" id="senha" autocomplete="current-password" required maxlength="256"></label>
+        <p class="erro" id="erro" role="alert" aria-live="assertive"></p>
+        <button class="btn" type="submit" id="btn-entrar">Entrar</button>
+        <a href="#" class="link-sec" id="lnk-esqueci">Esqueci a senha</a>
+      </form>
+
+      <form id="form-esqueci" hidden novalidate>
+        <h1>Esqueci a senha</h1>
+        <p class="nota">Informe o e-mail da sua conta.</p>
+        <label class="campo-rot">E-mail<input type="email" id="email-esqueci" autocomplete="username" required maxlength="254"></label>
+        <p class="ok" id="msg-esqueci" aria-live="polite"></p>
+        <button class="btn" type="submit">Enviar</button>
+        <a href="#" class="link-sec" id="lnk-voltar">Voltar</a>
+      </form>
+    </div>
+  </main>
+  <script src="js/entrar.js"></script>
+</body>
+</html>

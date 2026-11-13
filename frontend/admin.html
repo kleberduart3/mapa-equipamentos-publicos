@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Contas – Mapa de Equipamentos Públicos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="css/app.css" rel="stylesheet">
+</head>
+<body>
+  <header class="topo" style="grid-template-columns:1fr auto">
+    <div class="marca">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg>
+      <span>Mapa de Equipamentos Públicos · Contas</span>
+    </div>
+    <div class="acoes"><a class="btn sec" href="/" style="text-decoration:none">Voltar ao mapa</a></div>
+  </header>
+
+  <main class="admin">
+    <section>
+      <h2>Nova conta</h2>
+      <form id="form-novo" novalidate>
+        <div class="linha-form">
+          <label class="campo-rot">Nome<input id="novo-nome" required maxlength="120"></label>
+          <label class="campo-rot">E-mail<input id="novo-email" type="email" required maxlength="254"></label>
+          <label class="campo-rot">Papel
+            <select id="novo-papel">
+              <option value="usuario">Usuário (só os municípios marcados)</option>
+              <option value="admin">Administrador (todos os municípios e contas)</option>
+            </select>
+          </label>
+        </div>
+        <div id="novo-acessos-bloco">
+          <p class="nota">Municípios liberados: <b>consulta</b> vê o mapa e gera relatórios; <b>gestor</b> também envia dados da prefeitura.</p>
+          <div class="acessos-lista" id="novo-acessos"></div>
+        </div>
+        <p class="erro" id="erro-novo" role="alert"></p>
+        <button class="btn" type="submit">Criar conta e gerar link</button>
+      </form>
+      <div id="link-novo" hidden></div>
+    </section>
+
+    <section>
+      <h2>Contas</h2>
+      <div class="tabela-rolagem">
+        <table class="tabela">
+          <thead><tr><th>Nome / e-mail</th><th>Papel</th><th>Municípios</th><th>Situação</th><th>Último acesso</th><th></th></tr></thead>
+          <tbody id="usuarios"></tbody>
+        </table>
+      </div>
+      <div id="link-usuario" hidden></div>
+    </section>
+
+    <section>
+      <h2>Municípios</h2>
+      <div class="tabela-rolagem">
+        <table class="tabela">
+          <thead><tr><th>Município</th><th>Código IBGE</th><th>Dados</th><th>Distância a pé</th></tr></thead>
+          <tbody id="municipios"></tbody>
+        </table>
+      </div>
+      <p class="nota">Para incluir um município, rode no servidor:
+        <code>python backend/scripts/processar_municipio.py CÓDIGO_IBGE</code>.</p>
+    </section>
+
+    <section>
+      <h2>Registro de atividade (últimos 200)</h2>
+      <div class="tabela-rolagem">
+        <table class="tabela">
+          <thead><tr><th>Quando</th><th>Ação</th><th>Conta</th><th>Detalhe</th><th>IP</th></tr></thead>
+          <tbody id="eventos"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="dlg-editar">
+    <form class="dlg" id="form-editar" novalidate>
+      <h2>Editar conta</h2>
+      <p class="nota" id="ed-email"></p>
+      <label class="campo-rot">Nome<input id="ed-nome" required maxlength="120"></label>
+      <label class="campo-rot">Papel
+        <select id="ed-papel">
+          <option value="usuario">Usuário</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </label>
+      <div id="ed-acessos-bloco">
+        <p class="nota">Municípios liberados:</p>
+        <div class="acessos-lista" id="ed-acessos"></div>
+      </div>
+      <p class="erro" id="erro-ed" role="alert"></p>
+      <div class="dlg-acoes">
+        <button type="button" class="btn sec" id="ed-fechar">Cancelar</button>
+        <button type="submit" class="btn">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>

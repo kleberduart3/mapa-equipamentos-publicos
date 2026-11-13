@@ -93,7 +93,9 @@ def _cep_numero(endereco: str) -> tuple[str | None, str | None]:
 
 _GENERICAS = {"ESCOLA", "ENSINO", "FUNDAMENTAL", "CENTRO", "EDUCACAO", "INFANTIL", "PROFESSORA",
               "PROFESSOR", "PROF", "PROFª", "TEMPO", "INTEGRAL", "MUNICIPAL", "CRECHE", "DOS", "DAS",
-              "FUND", "ESC", "ENS", "CEI", "EDUC", "COMUNITARIA", "SENHORA", "NOSSA", "SILVA", "SANTOS"}
+              "FUND", "ESC", "ENS", "CEI", "EDUC", "COMUNITARIA", "SENHORA", "NOSSA", "SILVA", "SANTOS",
+              "ESTADUAL", "INDIGENA", "COLEGIO", "GRAU", "BASICA", "EDUCACIONAL", "CRECHE", "UNIDADE",
+              "INSTITUTO", "PROFESSORES", "MUNICIPIO"}
 
 
 def _tokens(nome) -> set[str]:
@@ -102,10 +104,37 @@ def _tokens(nome) -> set[str]:
     return {t for t in re.findall(r"[A-ZÀ-Ú]+", nome.upper()) if len(t) >= 4 and t not in _GENERICAS}
 
 
+# Para aceitar um estabelecimento de outro CEP, o nome precisa bater de verdade:
+# ≥2 palavras em comum que somem esta fração do "peso" do nome da escola
+# (palavras raras pesam mais que nomes comuns como JOSE ou MARIA).
+SEMELHANCA_MIN_MUNICIPIO = 0.6
+SEMELHANCA_MIN_CEP = 0.5
+
+
+
+def _pesos_idf(conjuntos) -> dict[str, float]:
+    import math
+    n = max(len(conjuntos), 1)
+    df: dict[str, int] = {}
+    for c in conjuntos:
+        for t in c:
+            df[t] = df.get(t, 0) + 1
+    return {t: math.log((n + 1) / (k + 0.5)) for t, k in df.items()} | {"__novo__": math.log((n + 1) / 0.5)}
+
+
+def _semelhanca(alvo: set[str], cand: set[str], idf: dict[str, float]) -> float:
+    if not alvo:
+        return 0.0
+    novo = idf["__novo__"]
+    total = sum(idf.get(t, novo) for t in alvo)
+    return sum(idf.get(t, novo) for t in alvo & cand) / total
+
+
 def geocodificar_por_cnefe(faltantes: pd.DataFrame, cnefe: gpd.GeoDataFrame) -> pd.DataFrame:
     """Completa coordenadas usando o CNEFE, em ordem de confiança:
     1) estabelecimento de ensino (espécie 4) do mesmo CEP cujo nome confere;
-    2) estabelecimento de ensino em qualquer CEP do município com ≥2 palavras do nome;
+    2) estabelecimento de ensino em qualquer CEP do município com nome muito parecido
+       (≥2 palavras em comum e semelhança ≥ SEMELHANCA_MIN_MUNICIPIO);
     3) mesmo CEP + mesmo número de porta (posição do endereço, nome não verificado);
     4) centroide dos endereços do CEP (aproximado).
     CEPs genéricos (…-899, …-970) sem nome conferido ficam sem coordenada.
@@ -114,6 +143,7 @@ def geocodificar_por_cnefe(faltantes: pd.DataFrame, cnefe: gpd.GeoDataFrame) -> 
     cn = cn.assign(lon=cn.geometry.x, lat=cn.geometry.y)
     ensino = cn[cn["COD_ESPECIE"] == "4"].copy()
     ensino["tok"] = ensino["DSC_ESTABELECIMENTO"].map(_tokens)
+    idf = _pesos_idf(ensino["tok"])
     saida = []
     for _, r in faltantes.iterrows():
         cep, num = _cep_numero(r.get("endereco"))
@@ -122,14 +152,24 @@ def geocodificar_por_cnefe(faltantes: pd.DataFrame, cnefe: gpd.GeoDataFrame) -> 
         metodo, ref = "sem_coordenada", None
         comum = ensino["tok"].map(lambda t: len(t & alvo))
         cand = ensino[(ensino["CEP"] == cep) & (comum >= 1)] if cep else ensino.iloc[0:0]
-        if not len(cand):
-            cand = ensino[comum >= 2]
-            if len(cand):
-                metodo = "cnefe_nome_municipio"
-        else:
-            metodo = "cnefe_nome_no_cep"
         if len(cand):
-            melhor = cand.loc[comum[cand.index].idxmax()]
+            # no mesmo CEP basta menos, mas não uma palavra solta (ex.: só SAMPAIO):
+            # o nome do CNEFE inteiro contido no da escola, ou metade do "peso" do nome
+            sem = cand["tok"].map(lambda t: _semelhanca(alvo, t, idf))
+            aceitos = sem[(sem >= SEMELHANCA_MIN_CEP) | cand["tok"].map(lambda t: bool(t) and t <= alvo)]
+            cand = cand.loc[aceitos.index]
+        if len(cand):
+            metodo = "cnefe_nome_no_cep"
+            melhor = cand.loc[sem[cand.index].idxmax()]
+        else:
+            sem = ensino.loc[comum >= 2, "tok"].map(lambda t: _semelhanca(alvo, t, idf))
+            sem = sem[sem >= SEMELHANCA_MIN_MUNICIPIO]
+            if len(sem):
+                metodo = "cnefe_nome_municipio"
+                cand = ensino.loc[sem.index]
+                melhor = cand.loc[sem.idxmax()]
+        if len(cand):
+
             lat, lon, ref = melhor["lat"], melhor["lon"], melhor["DSC_ESTABELECIMENTO"]
         elif cep and not cep.endswith(("899", "970", "000")):
             no_cep = cn[cn["CEP"] == cep]

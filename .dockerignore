@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+dados
+site
+tests
+docs
+**/__pycache__
+*.pyc
+.env
+.env.*
+*.db
+*.db-*
