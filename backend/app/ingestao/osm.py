@@ -12,26 +12,26 @@ import time
 import geopandas as gpd
 import pandas as pd
 
-from ..config import BRUTOS, CRS_GEO, PROCESSADOS, crs_metrico, municipio
+from ..config import BRUTOS, CRS_GEO, Municipio
 
 FOLGA_M = 2000
 
 
-def caminho_bruto():
-    return BRUTOS / "osm" / f"malha_pe_{municipio()['codigo_ibge']}.graphml"
+def caminho_bruto(m: Municipio):
+    return m.brutos / "osm_malha_pe.graphml"
 
 
-def baixar_malha(limite: gpd.GeoDataFrame, forcar: bool = False):
+def baixar_malha(m: Municipio, limite: gpd.GeoDataFrame, forcar: bool = False):
     import osmnx as ox
 
-    destino = caminho_bruto()
+    destino = caminho_bruto(m)
     if destino.exists() and not forcar:
         return ox.load_graphml(destino)
     destino.parent.mkdir(parents=True, exist_ok=True)
     ox.settings.use_cache = True
     ox.settings.cache_folder = str(BRUTOS / "osm" / "cache_overpass")
     ox.settings.requests_timeout = 300
-    area = limite.to_crs(crs_metrico()).buffer(FOLGA_M).to_crs(CRS_GEO).union_all()
+    area = limite.to_crs(m.crs).buffer(FOLGA_M).to_crs(CRS_GEO).union_all()
     erro = None
     # o servidor público principal vive lotado: tenta espelhos, com espera crescente
     for tentativa, url in enumerate(SERVIDORES * 2):
@@ -53,7 +53,7 @@ SERVIDORES = ["https://overpass-api.de/api", "https://overpass.private.coffee/ap
               "https://maps.mail.ru/osm/tools/overpass/api"]
 
 
-def preparar_rede(G) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+def preparar_rede(m: Municipio, G) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     """Nós e arestas não direcionadas (a pé não há mão de direção).
 
     Comprimento = comprimento da geometria no CRS métrico (o mesmo usado para
@@ -63,7 +63,7 @@ def preparar_rede(G) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     import shapely
     import osmnx as ox
 
-    crs = crs_metrico()
+    crs = m.crs
     nos, arestas = ox.graph_to_gdfs(G, nodes=True, edges=True)
     nos = nos.to_crs(crs)[["geometry"]].reset_index().rename(columns={"osmid": "osm_id"})
     idx = pd.Series(range(len(nos)), index=nos["osm_id"])
@@ -90,6 +90,8 @@ def preparar_rede(G) -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     return nos, a
 
 
-def salvar_rede(nos: gpd.GeoDataFrame, arestas: gpd.GeoDataFrame) -> None:
-    nos.to_parquet(PROCESSADOS / "rede_nos.parquet")
-    arestas.to_parquet(PROCESSADOS / "rede_arestas.parquet")
+def salvar_rede(m: Municipio, nos: gpd.GeoDataFrame, arestas: gpd.GeoDataFrame) -> None:
+    m.processados.mkdir(parents=True, exist_ok=True)
+    nos.to_parquet(m.processados / "rede_nos.parquet")
+    arestas.to_parquet(m.processados / "rede_arestas.parquet")
+

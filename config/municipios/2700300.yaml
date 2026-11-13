@@ -1,0 +1,6 @@
+# Arapiraca/AL – município piloto.
+# Qualquer chave de config/parametros.yaml pode ser substituída aqui, dentro de "parametros:".
+nome: Arapiraca
+uf: AL
+crs_metrico: "EPSG:31984"   # SIRGAS 2000 / UTM 24S (fixado; nos demais é estimado no preparo)
+parametros: {}

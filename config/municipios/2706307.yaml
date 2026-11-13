@@ -1,0 +1,5 @@
+# Palmeira dos Índios/AL. Qualquer chave de config/parametros.yaml pode ser substituída
+# aqui, dentro de "parametros:". O CRS métrico é estimado no preparo.
+nome: Palmeira dos Índios
+uf: AL
+parametros: {}

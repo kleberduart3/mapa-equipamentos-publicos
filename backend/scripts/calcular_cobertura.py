@@ -1,7 +1,7 @@
 """Etapa 3 – cobertura, demanda × capacidade e áreas prioritárias.
 
-Uso:  python backend/scripts/calcular_cobertura.py
-Lê dados/processados/*.parquet e config/parametros.yaml. Saídas em dados/saidas/:
+Uso:  python backend/scripts/calcular_cobertura.py --municipio CÓDIGO
+Lê dados/processados/{código}/ e os parâmetros do município. Saídas em dados/saidas/{código}/:
   cobertura_setores.parquet      indicadores por setor censitário (polígonos)
   cobertura_hex.parquet          indicadores e índice de prioridade por hexágono H3
   equipamentos_capacidade.parquet  cada equipamento com demanda no raio e razão capacidade/demanda
@@ -25,7 +25,7 @@ from scipy.spatial import cKDTree  # noqa: E402
 from shapely.geometry import Polygon  # noqa: E402
 
 from backend.app.analise import cobertura as cob  # noqa: E402
-from backend.app.config import CRS_GEO, PROCESSADOS, SAIDAS, crs_metrico, municipio, parametros  # noqa: E402
+from backend.app.config import CRS_GEO, municipio_cli  # noqa: E402
 from backend.app.ingestao import inep  # noqa: E402
 
 CORES = {"creche": "#e8873d", "pre_escola": "#e9c46a", "fundamental_iniciais": "#2f6db5",
@@ -37,16 +37,17 @@ def fmt(n, casas=0):
 
 
 def main() -> int:
-    P, m = parametros(), municipio()
+    m, _ = municipio_cli(descricao=__doc__)
+    P = m.P
     eqs = P["equipamentos"]
     fr = float(P["fator_raio_rural"])
     res_h3 = int(P["prioridade"]["resolucao_h3"])
 
-    setores = gpd.read_parquet(PROCESSADOS / "setores.parquet")
-    enderecos = gpd.read_parquet(PROCESSADOS / "enderecos.parquet")
-    escolas = gpd.read_parquet(PROCESSADOS / "escolas.parquet")
-    ubs = gpd.read_parquet(PROCESSADOS / "ubs.parquet")
-    limite = gpd.read_parquet(PROCESSADOS / "limite.parquet")
+    setores = gpd.read_parquet(m.processados / "setores.parquet")
+    enderecos = gpd.read_parquet(m.processados / "enderecos.parquet")
+    escolas = gpd.read_parquet(m.processados / "escolas.parquet")
+    ubs = gpd.read_parquet(m.processados / "ubs.parquet")
+    limite = gpd.read_parquet(m.processados / "limite.parquet")
 
     # ---------------- 1. Demanda ----------------
     print("Distribuindo população nos endereços…")
@@ -97,12 +98,12 @@ def main() -> int:
     por_hex["pop_total"] = base.assign(p=pts["pop_total"].to_numpy()).groupby("h3")["p"].sum().reindex(por_hex["h3"]).to_numpy()
     por_hex = cob.indice_prioridade(por_hex, tipos, P["prioridade"]["pesos"])
     geoms = [Polygon([(lng, lat) for lat, lng in h3.cell_to_boundary(c)]) for c in por_hex["h3"]]
-    hex_out = gpd.GeoDataFrame(por_hex, geometry=geoms, crs=CRS_GEO).to_crs(crs_metrico())
+    hex_out = gpd.GeoDataFrame(por_hex, geometry=geoms, crs=CRS_GEO).to_crs(m.crs)
 
     # ---------------- 5. Sugestões ----------------
     print("Sugerindo locais…")
     cent = [h3.cell_to_latlng(c) for c in por_hex["h3"]]
-    cand = gpd.GeoSeries(gpd.points_from_xy([c[1] for c in cent], [c[0] for c in cent]), crs=CRS_GEO).to_crs(crs_metrico())
+    cand = gpd.GeoSeries(gpd.points_from_xy([c[1] for c in cent], [c[0] for c in cent]), crs=CRS_GEO).to_crs(m.crs)
     cand_xy = np.column_stack([cand.x, cand.y])
     sug = []
     for t in tipos:
@@ -115,15 +116,15 @@ def main() -> int:
             sug.append(s)
     sug = pd.concat(sug, ignore_index=True) if sug else pd.DataFrame()
     if len(sug):
-        sug = gpd.GeoDataFrame(sug, geometry=gpd.points_from_xy(sug["x"], sug["y"]), crs=crs_metrico())
+        sug = gpd.GeoDataFrame(sug, geometry=gpd.points_from_xy(sug["x"], sug["y"]), crs=m.crs)
         bairros = gpd.sjoin(sug[["geometry"]], setores[["NM_BAIRRO", "SITUACAO", "geometry"]], how="left", predicate="within")
         sug["bairro"] = bairros["NM_BAIRRO"].groupby(level=0).first()
         sug["situacao"] = bairros["SITUACAO"].groupby(level=0).first()
 
     # ---------------- 6. Indicadores municipais ----------------
-    mic = inep.ler_microdados()
+    mic = inep.ler_microdados(m)
     mic = mic[mic["em_funcionamento"]]
-    ind = {"municipio": m["nome"], "uf": m["uf"], "codigo_ibge": m["codigo_ibge"],
+    ind = {"municipio": m.nome, "uf": m.uf, "codigo_ibge": m.cod,
            "populacao": int(setores["pop_total"].sum()), "fator_raio_rural": fr,
            "pesos_prioridade_aplicados": "populacao_nao_atendida 2/3, deficit_capacidade 1/3 (sem IPTU)",
            "tipos": {}}
@@ -159,18 +160,18 @@ def main() -> int:
     ind["checagem_populacao"] = {c: {"pontos": a, "setores": b} for c, (a, b) in chk_pop.items()}
 
     # ---------------- Gravação ----------------
-    SAIDAS.mkdir(parents=True, exist_ok=True)
-    set_out.to_parquet(SAIDAS / "cobertura_setores.parquet")
-    hex_out.to_parquet(SAIDAS / "cobertura_hex.parquet")
+    m.saidas.mkdir(parents=True, exist_ok=True)
+    set_out.to_parquet(m.saidas / "cobertura_setores.parquet")
+    hex_out.to_parquet(m.saidas / "cobertura_hex.parquet")
     if facs:
-        gpd.GeoDataFrame(pd.concat(facs, ignore_index=True), crs=crs_metrico()).to_parquet(SAIDAS / "equipamentos_capacidade.parquet")
+        gpd.GeoDataFrame(pd.concat(facs, ignore_index=True), crs=m.crs).to_parquet(m.saidas / "equipamentos_capacidade.parquet")
     if len(sug):
-        sug.to_parquet(SAIDAS / "sugestoes_novos.parquet")
-    (SAIDAS / "indicadores.json").write_text(json.dumps(ind, ensure_ascii=False, indent=2, default=float), encoding="utf-8")
+        sug.to_parquet(m.saidas / "sugestoes_novos.parquet")
+    (m.saidas / "indicadores.json").write_text(json.dumps(ind, ensure_ascii=False, indent=2, default=float), encoding="utf-8")
 
-    desenhar(hex_out, limite, facs, sug, eqs, SAIDAS / "cobertura_mapa.png")
-    resumo(ind, sug, facs, SAIDAS / "resumo_cobertura.md")
-    print((SAIDAS / "resumo_cobertura.md").read_text(encoding="utf-8"))
+    desenhar(hex_out, limite, facs, sug, eqs, m.saidas / "cobertura_mapa.png")
+    resumo(ind, sug, facs, m.saidas / "resumo_cobertura.md")
+    print((m.saidas / "resumo_cobertura.md").read_text(encoding="utf-8"))
     return 0
 
 

@@ -8,14 +8,11 @@
 # (ex.: legislação municipal, plano diretor, manuais do MEC/MS, bibliografia
 # de equipamentos urbanos) e registre-a no campo "fonte".
 #
-# Depois de editar, rode:  python backend/scripts/calcular_cobertura.py
+# Estes são os padrões de TODOS os municípios. Para mudar um valor só num
+# município, use config/municipios/{código IBGE}.yaml (chave "parametros:").
+#
+# Depois de editar, rode:  python backend/scripts/calcular_cobertura.py --municipio CÓDIGO
 # =============================================================================
-
-municipio:
-  nome: Arapiraca
-  uf: AL
-  codigo_ibge: "2700300"        # conferido na Etapa 2
-  crs_metrico: "EPSG:31984"     # SIRGAS 2000 / UTM zona 24S (cálculos em metros)
 
 # Multiplica o raio para moradores de setores RURAIS do IBGE.
 # Alavanca forte: 3.0 triplica o raio na zona rural (ex.: creche 500 m → 1,5 km).

@@ -1,7 +1,9 @@
 # Dados (grandes; não versionar)
 dados/brutos/**
 !dados/brutos/*/
-!dados/brutos/inep/*.tsv
+!dados/brutos/municipios/
+!dados/brutos/municipios/*/
+!dados/brutos/municipios/*/inep_*.tsv
 dados/processados/**
 dados/saidas/**
 !dados/**/.gitkeep
@@ -15,3 +17,14 @@ __pycache__/
 
 # Malha OSM baixada (refazer com preparar_rede.py)
 dados/brutos/osm/
+
+# Dados enviados pela prefeitura (IPTU etc.): NUNCA versionar
+dados/brutos/municipios/*/prefeitura/
+
+# Banco de dados e segredos
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.exemplo

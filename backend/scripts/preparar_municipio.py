@@ -1,17 +1,19 @@
 """Etapa 2 – limpa e padroniza os dados do município em dados/processados/.
 
-Uso:  python backend/scripts/preparar_municipio.py
+Uso:  python backend/scripts/preparar_municipio.py --municipio CÓDIGO
 
-Saídas (GeoParquet, SIRGAS 2000 / UTM do parametros.yaml):
+Saídas em dados/processados/{código}/ (GeoParquet, SIRGAS 2000 / UTM do município):
+  meta.json             CRS métrico (zona UTM estimada pelo limite, se não fixada no YAML)
   setores.parquet       setores com população total e por faixa etária
   limite.parquet        limite municipal (união dos setores)
   enderecos.parquet     endereços residenciais do CNEFE (para distribuir população)
   escolas.parquet       escolas públicas com matrículas por etapa
   ubs.parquet           UBS/postos municipais com nº de equipes
-e um relatório de conferência em dados/saidas/checagem_dados.md + mapa PNG.
+e um relatório de conferência em dados/saidas/{código}/checagem_dados.md + mapa PNG.
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -20,25 +22,37 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1].parent))
 import geopandas as gpd  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from backend.app.config import PROCESSADOS, SAIDAS, municipio  # noqa: E402
+from backend.app.config import CRS_GEO, Municipio, municipio_cli  # noqa: E402
 from backend.app.ingestao import cnes, ibge, inep  # noqa: E402
 
 
+def definir_crs(m: Municipio) -> str:
+    """Zona UTM (SIRGAS 2000) que contém o município, gravada em meta.json.
+    Se o YAML do município fixa crs_metrico, vale o do YAML."""
+    set_geo = ibge.ler_setores(m, crs=CRS_GEO)
+    crs = m._crs or set_geo.estimate_utm_crs(datum_name="SIRGAS 2000").to_string()
+    m.processados.mkdir(parents=True, exist_ok=True)
+    m.meta_arq.write_text(json.dumps({"crs_metrico": crs}, indent=1), encoding="utf-8")
+    return crs
+
+
 def main() -> int:
-    m = municipio()
-    PROCESSADOS.mkdir(parents=True, exist_ok=True)
-    SAIDAS.mkdir(parents=True, exist_ok=True)
-    rel: list[str] = [f"# Conferência dos dados – {m['nome']}/{m['uf']} ({m['codigo_ibge']})\n"]
+    m, _ = municipio_cli(descricao=__doc__)
+    m.processados.mkdir(parents=True, exist_ok=True)
+    m.saidas.mkdir(parents=True, exist_ok=True)
+    rel: list[str] = [f"# Conferência dos dados – {m.nome}/{m.uf} ({m.cod})\n"]
 
     # ---------------- Setores e população ----------------
     print("Setores…")
-    set_ = ibge.ler_setores()
-    faixas = ibge.populacao_por_faixa(set_["CD_SETOR"])
+    crs = definir_crs(m)
+    rel.append(f"- Sistema de coordenadas métrico: {crs}\n")
+    set_ = ibge.ler_setores(m)
+    faixas = ibge.populacao_por_faixa(m, set_["CD_SETOR"])
     set_ = set_.merge(faixas, on="CD_SETOR", how="left")
     for c in ibge.FAIXAS_DEMANDA:
         set_[c] = set_[c].fillna(0).round(1)
-    idades = ibge.idade_simples_municipio()
-    limite = gpd.GeoDataFrame({"municipio": [m["nome"]]}, geometry=[set_.union_all()], crs=set_.crs)
+    idades = ibge.idade_simples_municipio(m)
+    limite = gpd.GeoDataFrame({"municipio": [m.nome]}, geometry=[set_.union_all()], crs=set_.crs)
 
     pop_setores = int(set_["pop_total"].sum())
     rel += ["## População (Censo 2022)\n",
@@ -57,7 +71,7 @@ def main() -> int:
 
     # ---------------- CNEFE ----------------
     print("CNEFE…")
-    cn = ibge.ler_cnefe()
+    cn = ibge.ler_cnefe(m)
     cn["especie"] = cn["COD_ESPECIE"].map(ibge.ESPECIE)
     res = cn[cn["COD_ESPECIE"].isin(["1", "2"])][["COD_UNICO_ENDERECO", "especie", "NV_GEO_COORD", "geometry"]]
     # O CNEFE traz códigos de setor preliminares (sufixo "P"), renumerados na
@@ -79,14 +93,17 @@ def main() -> int:
 
     # ---------------- Escolas ----------------
     print("Escolas…")
-    esc = inep.montar_escolas(cn)
+    esc = inep.montar_escolas(m, cn)
     esc["dentro_municipio"] = esc.geometry.within(limite.geometry.iloc[0].buffer(50))
     mun = esc[(esc["dependencia"] == "Municipal") & esc["em_funcionamento"]]
-    mic = inep.ler_microdados()
+    mic = inep.ler_microdados(m)
     mic_mun = mic[(mic["dependencia"] == "Municipal") & mic["em_funcionamento"]]
     fora_catalogo = mic_mun[~mic_mun["codigo_inep"].isin(esc["codigo_inep"])]
+    origem = ("Catálogo de Escolas (exportação manual)" if inep.tem_catalogo(m)
+              else "microdados do Censo Escolar, geocodificadas pelo CNEFE")
     rel += ["## Escolas e creches (INEP)\n",
-            f"- Escolas públicas no Catálogo: {len(esc)} — municipais em funcionamento: **{len(mun)}**",
+            f"- Fonte das escolas: {origem}",
+            f"- Escolas públicas: {len(esc)} — municipais em funcionamento: **{len(mun)}**",
             f"- Matrículas da rede municipal (Censo Escolar {int(mic['ano_censo_escolar'].iloc[0])}): "
             + "; ".join(f"{rot} {int(mun[c].sum()):,}".replace(",", ".") for rot, c in [
                 ("creche", "mat_creche"), ("pré-escola", "mat_pre_escola"),
@@ -114,7 +131,7 @@ def main() -> int:
 
     # ---------------- UBS ----------------
     print("UBS…")
-    ubs = cnes.montar_ubs(cn)
+    ubs = cnes.montar_ubs(m, cn)
     ubs["dentro_municipio"] = ubs.geometry.within(limite.geometry.iloc[0].buffer(50))
     at = ubs[ubs["ativa"]]
     rel += ["## Unidades básicas de saúde (CNES)\n",
@@ -130,16 +147,17 @@ def main() -> int:
                          for r in at[~at['dentro_municipio'] & at['lat'].notna()].itertuples()) or "nenhuma") + "\n"]
 
     # ---------------- Gravação ----------------
-    set_.to_parquet(PROCESSADOS / "setores.parquet")
-    limite.to_parquet(PROCESSADOS / "limite.parquet")
-    res.to_parquet(PROCESSADOS / "enderecos.parquet")
-    esc.to_parquet(PROCESSADOS / "escolas.parquet")
-    ubs.to_parquet(PROCESSADOS / "ubs.parquet")
+    set_.to_parquet(m.processados / "setores.parquet")
+    limite.to_parquet(m.processados / "limite.parquet")
+    res.to_parquet(m.processados / "enderecos.parquet")
+    esc.to_parquet(m.processados / "escolas.parquet")
+    ubs.to_parquet(m.processados / "ubs.parquet")
 
-    mapa = SAIDAS / "checagem_mapa.png"
+    mapa = m.saidas / "checagem_mapa.png"
     desenhar_mapa(set_, limite, esc, ubs, mapa)
     rel.append(f"![Mapa de conferência]({mapa.name})\n")
-    (SAIDAS / "checagem_dados.md").write_text("\n".join(rel), encoding="utf-8")
+    (m.saidas / "checagem_dados.md").write_text("\n".join(rel), encoding="utf-8")
+
     print("\n".join(rel))
     return 0
 

@@ -1,7 +1,7 @@
 """Fase 2 – compara a cobertura em linha reta × a pé pelas ruas.
 
-    python backend/scripts/comparar_distancias.py
-Gera dados/saidas/comparacao_distancias.md e .json.
+    python backend/scripts/comparar_distancias.py --municipio CÓDIGO
+Gera dados/saidas/{código}/comparacao_distancias.md e .json.
 """
 from __future__ import annotations
 
@@ -17,12 +17,15 @@ import numpy as np  # noqa: E402
 from backend.app.analise import cobertura as cob  # noqa: E402
 from backend.app.analise.contexto import base  # noqa: E402
 from backend.app.analise.rede import diagnostico_ligacao  # noqa: E402
-from backend.app.config import SAIDAS, parametros  # noqa: E402
+from backend.app.config import municipio_cli  # noqa: E402
 
 
 def main() -> None:
     t0 = time.time()
-    b, P = base(), parametros()
+    m, _ = municipio_cli(descricao=__doc__)
+    b = base(m.cod)
+    P, SAIDAS = b.P, m.saidas
+
     rural = b.pts["rural"].to_numpy()
     med = {m: b.medidor(m) for m in ("reta", "rede")}
     print(f"carga + ligação à rede: {time.time() - t0:.1f} s")

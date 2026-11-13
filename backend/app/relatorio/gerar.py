@@ -1,6 +1,6 @@
 """Relatório PDF de cobertura de equipamentos públicos.
 
-Uso por script:  python backend/scripts/gerar_relatorio.py [--creche 600 ...]
+Uso por script:  python backend/scripts/gerar_relatorio.py --municipio CÓDIGO [--creche 600 ...]
 Uso pela API:    GET /api/{cod}/relatorio.pdf?creche=500&ubs=1000...
 
 Fluxo: recalcula a cobertura com os raios informados → desenha os mapas
@@ -20,8 +20,7 @@ import pandas as pd
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from ..analise import cobertura as cob
-from ..analise.contexto import base
-from ..config import SAIDAS, municipio, parametros
+from ..analise.contexto import Base, base
 from ..estilo import ESTILO, UNIDADE
 from ..ingestao import inep
 
@@ -41,8 +40,8 @@ def fmt(n, casas=0) -> str:
 # --------------------------------------------------------------------------- #
 # Análise com os raios escolhidos
 # --------------------------------------------------------------------------- #
-def analisar(raios: dict[str, int] | None = None, modo: str = "reta") -> dict:
-    b, P = base(), parametros()
+def analisar(b: Base, raios: dict[str, int] | None = None, modo: str = "reta") -> dict:
+    P = b.P
     raios = raios or {}
     md = b.medidor(modo)
     tipos = {}
@@ -143,12 +142,12 @@ def _extensao(ax, b, extra: gpd.GeoSeries | None = None, pad=900, proporcao=4 / 
     ax.set_ylim(cy - h / 2, cy + h / 2)
 
 
-def mapa_tipo(d: dict, hexa: gpd.GeoDataFrame, modo: str = "reta") -> str:
+def mapa_tipo(b: Base, d: dict, hexa: gpd.GeoDataFrame, modo: str = "reta") -> str:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    b, t, cor = base(), d["t"], d["cor"]
+    t, cor = d["t"], d["cor"]
     fig, ax = plt.subplots(figsize=(8, 6))
     h = hexa.assign(deficit=hexa[f"{t}_demanda_sem_cobertura"] + hexa[f"{t}_deficit_capacidade"])
     h = h[h["deficit"] > 0.5].to_crs(WEB)
@@ -182,12 +181,11 @@ def mapa_tipo(d: dict, hexa: gpd.GeoDataFrame, modo: str = "reta") -> str:
     return _png(fig)
 
 
-def mapa_prioridade(an: dict) -> str:
+def mapa_prioridade(b: Base, an: dict) -> str:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    b = base()
     fig, ax = plt.subplots(figsize=(8, 4.6))
     h = an["hex"][an["hex"]["prioridade_geral"] > 1].to_crs(WEB)
     _extensao(ax, b, proporcao=16 / 9)
@@ -241,8 +239,7 @@ def achado_rede(comp: list[dict], modo: str) -> list[str]:
             f"<b>{pior['rotulo']}</b>: de {fmt(pior['reta'])}% para {fmt(pior['rede'])}%."]
 
 
-def pendencias() -> list[str]:
-    b = base()
+def pendencias(b: Base) -> list[str]:
     e = b.escolas
     mats = e[list(inep.MAT.values())].sum(axis=1) > 0
     conf = e[e["em_funcionamento"].astype(bool) & mats & ~e["fonte_coord"].isin(PRECISAS)
@@ -259,11 +256,11 @@ def pendencias() -> list[str]:
     return L
 
 
-def matriculas() -> dict:
-    mic = inep.ler_microdados()
+def matriculas(b: Base) -> dict:
+    mic = inep.ler_microdados(b.m)
     mic = mic[mic["em_funcionamento"]]
     out = {}
-    for t, cfg in parametros()["equipamentos"].items():
+    for t, cfg in b.P["equipamentos"].items():
         if cfg["fonte_dados"] != "inep":
             continue
         g = mic.groupby("dependencia")[cfg["capacidade"]].sum()
@@ -275,9 +272,9 @@ def matriculas() -> dict:
 # --------------------------------------------------------------------------- #
 # HTML → PDF
 # --------------------------------------------------------------------------- #
-def comparacao(raios: dict[str, int] | None = None) -> list[dict]:
+def comparacao(b: Base, raios: dict[str, int] | None = None) -> list[dict]:
     """% coberta por tipo nos dois modos de distância (sem sugestões: rápido)."""
-    b, P = base(), parametros()
+    P = b.P
     if not b.tem_rede:
         return []
     rural = b.pts["rural"].to_numpy()
@@ -297,16 +294,16 @@ def comparacao(raios: dict[str, int] | None = None) -> list[dict]:
     return out
 
 
-def montar_html(raios: dict[str, int] | None = None, modo: str = "reta") -> str:
-    an = analisar(raios, modo)
-    m, P, b = municipio(), parametros(), base()
-    mat = matriculas()
-    comp = comparacao(raios)
+def montar_html(b: Base, raios: dict[str, int] | None = None, modo: str = "reta") -> str:
+    an = analisar(b, raios, modo)
+    m, P = b.m.info(), b.P
+    mat = matriculas(b)
+    comp = comparacao(b, raios)
     hoje = date.today()
     tipos = []
     for t, d in an["tipos"].items():
         tipos.append({**{k: v for k, v in d.items() if k not in ("res", "fac", "sem_coord", "sug")},
-                      "mapa": mapa_tipo(d, an["hex"], modo), "n_fac": len(d["fac"]), "n_sem_coord": len(d["sem_coord"]),
+                      "mapa": mapa_tipo(b, d, an["hex"], modo), "n_fac": len(d["fac"]), "n_sem_coord": len(d["sem_coord"]),
                       "sug": [] if not len(d["sug"]) else d["sug"].drop(columns="geometry").to_dict("records"),
                       "mat": mat.get(t), "redes": ", ".join(d["cfg"].get("redes", ["Municipal"])),
                       "capacidade_txt": ("equipes de Saúde da Família × " + fmt(d["cfg"]["pessoas_por_equipe"]) + " pessoas"
@@ -316,29 +313,43 @@ def montar_html(raios: dict[str, int] | None = None, modo: str = "reta") -> str:
     return env.get_template("modelo.html").render(
         m=m, data=f"{hoje.day} de {MESES[hoje.month - 1]} de {hoje.year}", P=P, fr=b.fr,
         pop=int(b.setores["pop_total"].sum()), n_setores=len(b.setores), tipos=tipos,
-        mapa_prioridade=mapa_prioridade(an), achados=achados(an, mat) + achado_rede(comp, modo), pendencias=pendencias(),
+        mapa_prioridade=mapa_prioridade(b, an), achados=achados(an, mat) + achado_rede(comp, modo), pendencias=pendencias(b),
         pesos="2/3 população fora do raio e 1/3 falta de capacidade (sem cadastro do IPTU)",
         modo=modo, comp=comp, rede_km=(b.medidor("rede").rede.km if b.tem_rede else None),
     )
 
 
-def gerar_pdf(destino: Path | None = None, raios: dict[str, int] | None = None, modo: str = "reta") -> Path:
+def nome_arquivo(nome: str) -> str:
+    """'Palmeira dos Índios' → 'palmeira_dos_indios' (seguro para nome de arquivo)."""
+    import re
+    import unicodedata
+    s = unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]+", "_", s).strip("_")
+
+
+def gerar_pdf(cod: str, destino: Path | None = None, raios: dict[str, int] | None = None,
+              modo: str = "reta", tempo_limite_s: float = 180) -> Path:
     from playwright.sync_api import sync_playwright
 
-    html = montar_html(raios, modo)
-    m = municipio()
+    b = base(cod)
+    html = montar_html(b, raios, modo)
+    m = b.m.info()
     sufixo = "_a_pe" if modo == "rede" else ""
-    destino = destino or SAIDAS / f"relatorio_{m['nome'].lower()}_{date.today():%Y%m%d}{sufixo}.pdf"
+    destino = destino or b.m.saidas / f"relatorio_{nome_arquivo(m['nome'])}_{date.today():%Y%m%d}{sufixo}.pdf"
     destino.parent.mkdir(parents=True, exist_ok=True)
     rodape = (f'<div style="font:8px Inter,Arial,sans-serif;color:#6b7785;width:100%;padding:0 14mm;'
               f'display:flex;justify-content:space-between"><span>Mapa de Equipamentos Públicos – {m["nome"]}/{m["uf"]}</span>'
               '<span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span></div>')
     with sync_playwright() as p:
         nav = p.chromium.launch()
-        pg = nav.new_page()
-        pg.set_content(html, wait_until="networkidle")
-        pg.pdf(path=str(destino), format="A4", print_background=True, display_header_footer=True,
-               header_template="<span></span>", footer_template=rodape,
-               margin={"top": "14mm", "bottom": "16mm", "left": "14mm", "right": "14mm"})
-        nav.close()
+        try:
+            pg = nav.new_page()
+            pg.set_default_timeout(tempo_limite_s * 1000)
+            pg.set_content(html, wait_until="networkidle")
+            pg.pdf(path=str(destino), format="A4", print_background=True, display_header_footer=True,
+                   header_template="<span></span>", footer_template=rodape,
+                   margin={"top": "14mm", "bottom": "16mm", "left": "14mm", "right": "14mm"})
+        finally:
+            nav.close()
     return destino
+

@@ -1,4 +1,10 @@
-"""Escolas e creches – INEP (Catálogo de Escolas + microdados do Censo Escolar)."""
+"""Escolas e creches – INEP (microdados do Censo Escolar + coordenadas).
+
+Coordenadas, em ordem de preferência:
+  1. Catálogo de Escolas do INEP exportado à mão (opcional, por município):
+     dados/brutos/municipios/{código}/inep_catalogo.tsv (+ inep_enderecos.tsv);
+  2. geocodificação do endereço dos microdados pelo CNEFE (ver geocodificar_por_cnefe).
+"""
 from __future__ import annotations
 
 import re
@@ -7,7 +13,7 @@ import zipfile
 import geopandas as gpd
 import pandas as pd
 
-from ..config import BRUTOS, CRS_GEO, crs_metrico, municipio
+from ..config import BRUTOS, CRS_GEO, Municipio
 
 MAT = {
     "QT_MAT_INF_CRE": "mat_creche",
@@ -17,33 +23,61 @@ MAT = {
     "QT_MAT_MED": "mat_medio",
 }
 DEPENDENCIA = {1: "Federal", 2: "Estadual", 3: "Municipal", 4: "Privada"}
+LOCALIZACAO = {1: "Urbana", 2: "Rural"}
+SITUACAO = {1: "FUNCIONANDO", 2: "PARALISADA", 3: "EXTINTA", 4: "EXTINTA NO ANO ANTERIOR"}
+ENDERECO = ["DS_ENDERECO", "NU_ENDERECO", "NO_BAIRRO", "CO_CEP"]
 
 
-def ler_microdados(ano: int = 2024) -> pd.DataFrame:
-    """Matrículas por etapa de cada escola do município."""
-    cod = int(municipio()["codigo_ibge"])
+def ler_microdados(m: Municipio, ano: int = 2024) -> pd.DataFrame:
+    """Matrículas por etapa e endereço de cada escola do município."""
+    cod = int(m.cod)
     with zipfile.ZipFile(BRUTOS / "inep" / f"microdados_censo_escolar_{ano}.zip") as zf:
         nome = next(n for n in zf.namelist() if n.endswith(f"microdados_ed_basica_{ano}.csv"))
         cols = ["CO_MUNICIPIO", "CO_ENTIDADE", "NO_ENTIDADE", "TP_DEPENDENCIA",
-                "TP_LOCALIZACAO", "TP_SITUACAO_FUNCIONAMENTO", *MAT]
+                "TP_LOCALIZACAO", "TP_SITUACAO_FUNCIONAMENTO", *ENDERECO, *MAT]
         partes = [b[b["CO_MUNICIPIO"] == cod] for b in
                   pd.read_csv(zf.open(nome), sep=";", encoding="latin1", usecols=cols, chunksize=50_000)]
     df = pd.concat(partes).rename(columns=MAT)
     df["codigo_inep"] = df["CO_ENTIDADE"].astype(str)
     df["dependencia"] = df["TP_DEPENDENCIA"].map(DEPENDENCIA)
     df["em_funcionamento"] = df["TP_SITUACAO_FUNCIONAMENTO"] == 1
+    df["localizacao"] = df["TP_LOCALIZACAO"].map(LOCALIZACAO)
+    df["situacao"] = df["TP_SITUACAO_FUNCIONAMENTO"].map(SITUACAO)
+    df["endereco"] = [_endereco(*v) for v in df[ENDERECO].itertuples(index=False)]
     for c in MAT.values():
         df[c] = df[c].fillna(0).astype(int)
     df["ano_censo_escolar"] = ano
-    return df[["codigo_inep", "NO_ENTIDADE", "dependencia", "em_funcionamento",
-               *MAT.values(), "ano_censo_escolar"]]
+    return df[["codigo_inep", "NO_ENTIDADE", "dependencia", "localizacao", "situacao", "endereco",
+               "em_funcionamento", *MAT.values(), "ano_censo_escolar"]]
 
 
-def ler_catalogo() -> pd.DataFrame:
-    """Exportação do Catálogo de Escolas (escolas públicas) com coordenadas."""
-    cat = pd.read_csv(BRUTOS / "inep" / "catalogo_escolas_arapiraca_publicas.tsv", sep="\t", dtype=str)
-    end = pd.read_csv(BRUTOS / "inep" / "escolas_sem_coordenadas_enderecos.tsv", sep="\t", dtype=str)
-    cat = cat.merge(end, on="codigo_inep", how="left")
+def _endereco(logradouro, numero, bairro, cep) -> str | None:
+    """Endereço no mesmo formato do Catálogo ("Rua X, 12 - Bairro - CEP 57300-000"),
+    que é o que _cep_numero sabe ler."""
+    if not isinstance(logradouro, str):
+        return None
+    cep = re.sub(r"\D", "", str(int(cep)) if isinstance(cep, float) and cep == cep else str(cep or ""))
+    num = str(numero).strip() if isinstance(numero, str) and numero.strip() else "S/N"
+    partes = [f"{logradouro.strip()}, {num}"]
+    if isinstance(bairro, str) and bairro.strip():
+        partes.append(bairro.strip())
+    if len(cep) == 8:
+        partes.append(f"CEP {cep[:5]}-{cep[5:]}")
+    return " - ".join(partes)
+
+
+def tem_catalogo(m: Municipio) -> bool:
+    return (m.brutos / "inep_catalogo.tsv").exists()
+
+
+def ler_catalogo(m: Municipio) -> pd.DataFrame:
+    """Exportação manual do Catálogo de Escolas (escolas públicas) com coordenadas."""
+    cat = pd.read_csv(m.brutos / "inep_catalogo.tsv", sep="\t", dtype=str)
+    extra = m.brutos / "inep_enderecos.tsv"
+    if extra.exists():
+        cat = cat.merge(pd.read_csv(extra, sep="\t", dtype=str), on="codigo_inep", how="left")
+    else:
+        cat["endereco"] = None
     cat["latitude"] = pd.to_numeric(cat["latitude"], errors="coerce")
     cat["longitude"] = pd.to_numeric(cat["longitude"], errors="coerce")
     return cat
@@ -109,8 +143,25 @@ def geocodificar_por_cnefe(faltantes: pd.DataFrame, cnefe: gpd.GeoDataFrame) -> 
     return pd.DataFrame(saida)
 
 
-def montar_escolas(cnefe: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    cat = ler_catalogo()
+def _sem_catalogo(mic: pd.DataFrame) -> pd.DataFrame:
+    """Escolas públicas dos microdados no formato do Catálogo, ainda sem coordenadas."""
+    pub = mic[mic["dependencia"] != "Privada"]
+    cat = pub.rename(columns={"NO_ENTIDADE": "escola"})[
+        ["codigo_inep", "escola", "dependencia", "localizacao", "situacao", "endereco"]].copy()
+    cat["latitude"] = float("nan")
+    cat["longitude"] = float("nan")
+    return cat
+
+
+def montar_escolas(m: Municipio, cnefe: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    mic = ler_microdados(m)
+    if tem_catalogo(m):
+        cat = ler_catalogo(m)
+        # endereço dos microdados para quem o Catálogo não trouxe
+        end = mic.set_index("codigo_inep")["endereco"]
+        cat["endereco"] = cat["endereco"].fillna(cat["codigo_inep"].map(end))
+    else:
+        cat = _sem_catalogo(mic)
     cat["fonte_coord"] = cat["latitude"].notna().map({True: "inep_catalogo", False: None})
     cat["cnefe_nome_conferido"] = None
     sem = cat[cat["latitude"].isna()]
@@ -119,8 +170,8 @@ def montar_escolas(cnefe: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         cat = cat.set_index("codigo_inep")
         cat.update(geo)
         cat = cat.reset_index()
-    mic = ler_microdados()
-    esc = cat.merge(mic.drop(columns=["dependencia"]), on="codigo_inep", how="left")
+    esc = cat.merge(mic.drop(columns=["dependencia", "localizacao", "situacao", "endereco"]),
+                    on="codigo_inep", how="left")
     esc["em_funcionamento"] = esc["em_funcionamento"].fillna(esc["situacao"] == "FUNCIONANDO")
     for c in MAT.values():
         esc[c] = esc[c].fillna(0).astype(int)
@@ -130,4 +181,5 @@ def montar_escolas(cnefe: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     esc["oferta_fund_finais"] = esc["mat_fund_finais"] > 0
     esc["oferta_medio"] = esc["mat_medio"] > 0
     g = gpd.GeoDataFrame(esc, geometry=gpd.points_from_xy(esc["longitude"], esc["latitude"]), crs=CRS_GEO)
-    return g.to_crs(crs_metrico())
+    return g.to_crs(m.crs)
+

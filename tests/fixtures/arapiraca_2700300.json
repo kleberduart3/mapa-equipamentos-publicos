@@ -1,0 +1,832 @@
+{
+ "cobertura": {
+  "creche_500_reta": {
+   "indicadores": {
+    "tipo": "creche",
+    "raio_m": 500,
+    "modo": "reta",
+    "pop_faixa": 13402,
+    "pct_coberta": 36.3,
+    "pct_coberta_rural": 39.7,
+    "pop_descoberta": 8533,
+    "demanda_meta": 6701,
+    "demanda_sem_cobertura": 4267,
+    "deficit_capacidade": 338,
+    "equipamentos": 36
+   },
+   "n_hex": 777,
+   "soma_deficit": 4492.0,
+   "radar": [
+    [
+     -36.6702,
+     -9.7172
+    ],
+    [
+     -36.682,
+     -9.7069
+    ],
+    [
+     -36.6618,
+     -9.7699
+    ],
+    [
+     -36.6437,
+     -9.753
+    ],
+    [
+     -36.6585,
+     -9.7444
+    ]
+   ]
+  },
+  "creche_500_rede": {
+   "indicadores": {
+    "tipo": "creche",
+    "raio_m": 500,
+    "modo": "rede",
+    "pop_faixa": 13402,
+    "pct_coberta": 23.8,
+    "pct_coberta_rural": 28.4,
+    "pop_descoberta": 10216,
+    "demanda_meta": 6701,
+    "demanda_sem_cobertura": 5108,
+    "deficit_capacidade": 72,
+    "equipamentos": 36
+   },
+   "n_hex": 843,
+   "soma_deficit": 5064.0,
+   "radar": [
+    [
+     -36.6828,
+     -9.775
+    ],
+    [
+     -36.6762,
+     -9.7205
+    ],
+    [
+     -36.6618,
+     -9.7699
+    ],
+    [
+     -36.6555,
+     -9.7427
+    ],
+    [
+     -36.6967,
+     -9.6916
+    ]
+   ]
+  },
+  "creche_2000_reta": {
+   "indicadores": {
+    "tipo": "creche",
+    "raio_m": 2000,
+    "modo": "reta",
+    "pop_faixa": 13402,
+    "pct_coberta": 96.0,
+    "pct_coberta_rural": 100.0,
+    "pop_descoberta": 533,
+    "demanda_meta": 6701,
+    "demanda_sem_cobertura": 267,
+    "deficit_capacidade": 3358,
+    "equipamentos": 36
+   },
+   "n_hex": 627,
+   "soma_deficit": 3562.0,
+   "radar": [
+    [
+     -36.6762,
+     -9.7239
+    ],
+    [
+     -36.6556,
+     -9.7529
+    ],
+    [
+     -36.635,
+     -9.7751
+    ],
+    [
+     -36.668,
+     -9.7835
+    ],
+    [
+     -36.6914,
+     -9.746
+    ]
+   ]
+  },
+  "creche_2000_rede": {
+   "indicadores": {
+    "tipo": "creche",
+    "raio_m": 2000,
+    "modo": "rede",
+    "pop_faixa": 13402,
+    "pct_coberta": 89.7,
+    "pct_coberta_rural": 93.4,
+    "pop_descoberta": 1383,
+    "demanda_meta": 6701,
+    "demanda_sem_cobertura": 691,
+    "deficit_capacidade": 2942,
+    "equipamentos": 36
+   },
+   "n_hex": 663,
+   "soma_deficit": 3564.0,
+   "radar": [
+    [
+     -36.6703,
+     -9.7274
+    ],
+    [
+     -36.6586,
+     -9.7546
+    ],
+    [
+     -36.635,
+     -9.7785
+    ],
+    [
+     -36.6824,
+     -9.7375
+    ],
+    [
+     -36.6435,
+     -9.736
+    ]
+   ]
+  },
+  "pre_escola_500_reta": {
+   "indicadores": {
+    "tipo": "pre_escola",
+    "raio_m": 500,
+    "modo": "reta",
+    "pop_faixa": 6863,
+    "pct_coberta": 53.0,
+    "pct_coberta_rural": 52.2,
+    "pop_descoberta": 3229,
+    "demanda_meta": 6863,
+    "demanda_sem_cobertura": 3229,
+    "deficit_capacidade": 520,
+    "equipamentos": 61
+   },
+   "n_hex": 684,
+   "soma_deficit": 3644.0,
+   "radar": [
+    [
+     -36.6702,
+     -9.7172
+    ],
+    [
+     -36.682,
+     -9.7069
+    ],
+    [
+     -36.6828,
+     -9.775
+    ],
+    [
+     -36.6648,
+     -9.7716
+    ],
+    [
+     -36.6853,
+     -9.7358
+    ]
+   ]
+  },
+  "pre_escola_500_rede": {
+   "indicadores": {
+    "tipo": "pre_escola",
+    "raio_m": 500,
+    "modo": "rede",
+    "pop_faixa": 6863,
+    "pct_coberta": 34.9,
+    "pct_coberta_rural": 37.5,
+    "pop_descoberta": 4467,
+    "demanda_meta": 6863,
+    "demanda_sem_cobertura": 4467,
+    "deficit_capacidade": 261,
+    "equipamentos": 61
+   },
+   "n_hex": 793,
+   "soma_deficit": 4609.0,
+   "radar": [
+    [
+     -36.6672,
+     -9.7189
+    ],
+    [
+     -36.6828,
+     -9.775
+    ],
+    [
+     -36.6761,
+     -9.7171
+    ],
+    [
+     -36.6555,
+     -9.7427
+    ],
+    [
+     -36.6613,
+     -9.7223
+    ]
+   ]
+  },
+  "pre_escola_2000_reta": {
+   "indicadores": {
+    "tipo": "pre_escola",
+    "raio_m": 2000,
+    "modo": "reta",
+    "pop_faixa": 6863,
+    "pct_coberta": 98.8,
+    "pct_coberta_rural": 100.0,
+    "pop_descoberta": 79,
+    "demanda_meta": 6863,
+    "demanda_sem_cobertura": 79,
+    "deficit_capacidade": 2520,
+    "equipamentos": 61
+   },
+   "n_hex": 563,
+   "soma_deficit": 2541.0,
+   "radar": [
+    [
+     -36.6762,
+     -9.7205
+    ],
+    [
+     -36.6648,
+     -9.7716
+    ],
+    [
+     -36.6409,
+     -9.7683
+    ],
+    [
+     -36.6495,
+     -9.7359
+    ],
+    [
+     -36.6854,
+     -9.746
+    ]
+   ]
+  },
+  "pre_escola_2000_rede": {
+   "indicadores": {
+    "tipo": "pre_escola",
+    "raio_m": 2000,
+    "modo": "rede",
+    "pop_faixa": 6863,
+    "pct_coberta": 94.2,
+    "pct_coberta_rural": 97.5,
+    "pop_descoberta": 396,
+    "demanda_meta": 6863,
+    "demanda_sem_cobertura": 396,
+    "deficit_capacidade": 2174,
+    "equipamentos": 61
+   },
+   "n_hex": 565,
+   "soma_deficit": 2506.0,
+   "radar": [
+    [
+     -36.6731,
+     -9.7155
+    ],
+    [
+     -36.6465,
+     -9.7411
+    ],
+    [
+     -36.6499,
+     -9.7734
+    ],
+    [
+     -36.6824,
+     -9.7375
+    ],
+    [
+     -36.6738,
+     -9.7733
+    ]
+   ]
+  },
+  "fundamental_iniciais_1000_reta": {
+   "indicadores": {
+    "tipo": "fundamental_iniciais",
+    "raio_m": 1000,
+    "modo": "reta",
+    "pop_faixa": 17689,
+    "pct_coberta": 82.1,
+    "pct_coberta_rural": 82.5,
+    "pop_descoberta": 3165,
+    "demanda_meta": 17689,
+    "demanda_sem_cobertura": 3165,
+    "deficit_capacidade": 3097,
+    "equipamentos": 52
+   },
+   "n_hex": 737,
+   "soma_deficit": 6194.0,
+   "radar": [
+    [
+     -36.676,
+     -9.7103
+    ],
+    [
+     -36.635,
+     -9.7785
+    ],
+    [
+     -36.6465,
+     -9.7411
+    ],
+    [
+     -36.6678,
+     -9.7665
+    ],
+    [
+     -36.6501,
+     -9.787
+    ]
+   ]
+  },
+  "fundamental_iniciais_1000_rede": {
+   "indicadores": {
+    "tipo": "fundamental_iniciais",
+    "raio_m": 1000,
+    "modo": "rede",
+    "pop_faixa": 17689,
+    "pct_coberta": 66.5,
+    "pct_coberta_rural": 68.6,
+    "pop_descoberta": 5924,
+    "demanda_meta": 17689,
+    "demanda_sem_cobertura": 5924,
+    "deficit_capacidade": 1640,
+    "equipamentos": 52
+   },
+   "n_hex": 776,
+   "soma_deficit": 7504.0,
+   "radar": [
+    [
+     -36.6731,
+     -9.7155
+    ],
+    [
+     -36.682,
+     -9.7069
+    ],
+    [
+     -36.6853,
+     -9.7358
+    ],
+    [
+     -36.6351,
+     -9.7819
+    ],
+    [
+     -36.65,
+     -9.7836
+    ]
+   ]
+  },
+  "fundamental_iniciais_2000_reta": {
+   "indicadores": {
+    "tipo": "fundamental_iniciais",
+    "raio_m": 2000,
+    "modo": "reta",
+    "pop_faixa": 17689,
+    "pct_coberta": 97.0,
+    "pct_coberta_rural": 97.3,
+    "pop_descoberta": 539,
+    "demanda_meta": 17689,
+    "demanda_sem_cobertura": 539,
+    "deficit_capacidade": 5289,
+    "equipamentos": 52
+   },
+   "n_hex": 674,
+   "soma_deficit": 5772.0,
+   "radar": [
+    [
+     -36.6762,
+     -9.7205
+    ],
+    [
+     -36.635,
+     -9.7751
+    ],
+    [
+     -36.6737,
+     -9.7665
+    ],
+    [
+     -36.6495,
+     -9.7393
+    ],
+    [
+     -36.6939,
+     -9.7001
+    ]
+   ]
+  },
+  "fundamental_iniciais_2000_rede": {
+   "indicadores": {
+    "tipo": "fundamental_iniciais",
+    "raio_m": 2000,
+    "modo": "rede",
+    "pop_faixa": 17689,
+    "pct_coberta": 92.7,
+    "pct_coberta_rural": 92.7,
+    "pop_descoberta": 1286,
+    "demanda_meta": 17689,
+    "demanda_sem_cobertura": 1286,
+    "deficit_capacidade": 4671,
+    "equipamentos": 52
+   },
+   "n_hex": 707,
+   "soma_deficit": 5906.0,
+   "radar": [
+    [
+     -36.635,
+     -9.7785
+    ],
+    [
+     -36.6731,
+     -9.7155
+    ],
+    [
+     -36.6465,
+     -9.7411
+    ],
+    [
+     -36.6824,
+     -9.7375
+    ],
+    [
+     -36.6738,
+     -9.7733
+    ]
+   ]
+  },
+  "fundamental_finais_1500_reta": {
+   "indicadores": {
+    "tipo": "fundamental_finais",
+    "raio_m": 1500,
+    "modo": "reta",
+    "pop_faixa": 14339,
+    "pct_coberta": 90.0,
+    "pct_coberta_rural": 86.5,
+    "pop_descoberta": 1436,
+    "demanda_meta": 14339,
+    "demanda_sem_cobertura": 1436,
+    "deficit_capacidade": 3174,
+    "equipamentos": 38
+   },
+   "n_hex": 633,
+   "soma_deficit": 4552.0,
+   "radar": [
+    [
+     -36.6349,
+     -9.7717
+    ],
+    [
+     -36.6768,
+     -9.7716
+    ],
+    [
+     -36.6524,
+     -9.7308
+    ],
+    [
+     -36.6791,
+     -9.7154
+    ],
+    [
+     -36.6847,
+     -9.6882
+    ]
+   ]
+  },
+  "fundamental_finais_1500_rede": {
+   "indicadores": {
+    "tipo": "fundamental_finais",
+    "raio_m": 1500,
+    "modo": "rede",
+    "pop_faixa": 14339,
+    "pct_coberta": 78.8,
+    "pct_coberta_rural": 73.7,
+    "pop_descoberta": 3046,
+    "demanda_meta": 14339,
+    "demanda_sem_cobertura": 3046,
+    "deficit_capacidade": 2123,
+    "equipamentos": 38
+   },
+   "n_hex": 690,
+   "soma_deficit": 5102.0,
+   "radar": [
+    [
+     -36.6768,
+     -9.7716
+    ],
+    [
+     -36.635,
+     -9.7785
+    ],
+    [
+     -36.6435,
+     -9.7394
+    ],
+    [
+     -36.6821,
+     -9.7137
+    ],
+    [
+     -36.6997,
+     -9.6864
+    ]
+   ]
+  },
+  "fundamental_finais_2000_reta": {
+   "indicadores": {
+    "tipo": "fundamental_finais",
+    "raio_m": 2000,
+    "modo": "reta",
+    "pop_faixa": 14339,
+    "pct_coberta": 96.9,
+    "pct_coberta_rural": 96.8,
+    "pop_descoberta": 441,
+    "demanda_meta": 14339,
+    "demanda_sem_cobertura": 441,
+    "deficit_capacidade": 3801,
+    "equipamentos": 38
+   },
+   "n_hex": 594,
+   "soma_deficit": 4179.0,
+   "radar": [
+    [
+     -36.635,
+     -9.7751
+    ],
+    [
+     -36.6679,
+     -9.7767
+    ],
+    [
+     -36.6762,
+     -9.7205
+    ],
+    [
+     -36.6405,
+     -9.7377
+    ],
+    [
+     -36.6847,
+     -9.6882
+    ]
+   ]
+  },
+  "fundamental_finais_2000_rede": {
+   "indicadores": {
+    "tipo": "fundamental_finais",
+    "raio_m": 2000,
+    "modo": "rede",
+    "pop_faixa": 14339,
+    "pct_coberta": 90.5,
+    "pct_coberta_rural": 85.3,
+    "pop_descoberta": 1357,
+    "demanda_meta": 14339,
+    "demanda_sem_cobertura": 1357,
+    "deficit_capacidade": 3326,
+    "equipamentos": 38
+   },
+   "n_hex": 653,
+   "soma_deficit": 4624.0,
+   "radar": [
+    [
+     -36.635,
+     -9.7785
+    ],
+    [
+     -36.6738,
+     -9.7733
+    ],
+    [
+     -36.6731,
+     -9.7155
+    ],
+    [
+     -36.6435,
+     -9.736
+    ],
+    [
+     -36.6938,
+     -9.6933
+    ]
+   ]
+  },
+  "ubs_1000_reta": {
+   "indicadores": {
+    "tipo": "ubs",
+    "raio_m": 1000,
+    "modo": "reta",
+    "pop_faixa": 234696,
+    "pct_coberta": 85.5,
+    "pct_coberta_rural": 55.3,
+    "pop_descoberta": 34002,
+    "demanda_meta": 234696,
+    "demanda_sem_cobertura": 34002,
+    "deficit_capacidade": 16370,
+    "equipamentos": 40
+   },
+   "n_hex": 909,
+   "soma_deficit": 50364.0,
+   "radar": [
+    [
+     -36.6467,
+     -9.7581
+    ],
+    [
+     -36.6997,
+     -9.6864
+    ],
+    [
+     -36.653,
+     -9.7853
+    ],
+    [
+     -36.6731,
+     -9.7155
+    ],
+    [
+     -36.6793,
+     -9.7358
+    ]
+   ]
+  },
+  "ubs_1000_rede": {
+   "indicadores": {
+    "tipo": "ubs",
+    "raio_m": 1000,
+    "modo": "rede",
+    "pop_faixa": 234696,
+    "pct_coberta": 67.1,
+    "pct_coberta_rural": 35.3,
+    "pop_descoberta": 77324,
+    "demanda_meta": 234696,
+    "demanda_sem_cobertura": 77324,
+    "deficit_capacidade": 7269,
+    "equipamentos": 40
+   },
+   "n_hex": 1162,
+   "soma_deficit": 84591.0,
+   "radar": [
+    [
+     -36.6467,
+     -9.7547
+    ],
+    [
+     -36.6769,
+     -9.7818
+    ],
+    [
+     -36.6853,
+     -9.7358
+    ],
+    [
+     -36.6557,
+     -9.7563
+    ],
+    [
+     -36.6733,
+     -9.7291
+    ]
+   ]
+  },
+  "ubs_2000_reta": {
+   "indicadores": {
+    "tipo": "ubs",
+    "raio_m": 2000,
+    "modo": "reta",
+    "pop_faixa": 234696,
+    "pct_coberta": 97.0,
+    "pct_coberta_rural": 98.0,
+    "pop_descoberta": 7129,
+    "demanda_meta": 234696,
+    "demanda_sem_cobertura": 7129,
+    "deficit_capacidade": 21601,
+    "equipamentos": 40
+   },
+   "n_hex": 650,
+   "soma_deficit": 28724.0,
+   "radar": [
+    [
+     -36.6848,
+     -9.6916
+    ],
+    [
+     -36.668,
+     -9.7835
+    ],
+    [
+     -36.6792,
+     -9.7256
+    ],
+    [
+     -36.6379,
+     -9.77
+    ],
+    [
+     -36.6115,
+     -9.8092
+    ]
+   ]
+  },
+  "ubs_2000_rede": {
+   "indicadores": {
+    "tipo": "ubs",
+    "raio_m": 2000,
+    "modo": "rede",
+    "pop_faixa": 234696,
+    "pct_coberta": 94.4,
+    "pct_coberta_rural": 87.8,
+    "pop_descoberta": 13106,
+    "demanda_meta": 234696,
+    "demanda_sem_cobertura": 13106,
+    "deficit_capacidade": 22095,
+    "equipamentos": 40
+   },
+   "n_hex": 755,
+   "soma_deficit": 35189.0,
+   "radar": [
+    [
+     -36.6824,
+     -9.7375
+    ],
+    [
+     -36.6436,
+     -9.7428
+    ],
+    [
+     -36.6938,
+     -9.6933
+    ],
+    [
+     -36.6768,
+     -9.7716
+    ],
+    [
+     -36.6349,
+     -9.7717
+    ]
+   ]
+  }
+ },
+ "areas": {
+  "creche": {
+   "n": 36,
+   "raios": [
+    500.0,
+    1500.0
+   ]
+  },
+  "pre_escola": {
+   "n": 61,
+   "raios": [
+    500.0,
+    1500.0
+   ]
+  },
+  "fundamental_iniciais": {
+   "n": 52,
+   "raios": [
+    1000.0,
+    3000.0
+   ]
+  },
+  "fundamental_finais": {
+   "n": 38,
+   "raios": [
+    1500.0,
+    4500.0
+   ]
+  },
+  "ubs": {
+   "n": 40,
+   "raios": [
+    1000.0,
+    3000.0
+   ]
+  }
+ },
+ "prioridade": {
+  "reta": {
+   "n": 637,
+   "soma": 3590.0
+  },
+  "rede": {
+   "n": 653,
+   "soma": 4325.0
+  }
+ },
+ "n_equipamentos": 240
+}

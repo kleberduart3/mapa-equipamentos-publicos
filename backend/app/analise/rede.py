@@ -22,7 +22,7 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import dijkstra
 from scipy.spatial import cKDTree
 
-from ..config import PROCESSADOS
+from ..config import Municipio
 
 LOTE = 250          # destinos por rodada de Dijkstra (memória: 2·LOTE × nós)
 
@@ -52,8 +52,9 @@ class Rede:
         self.arvore = shapely.STRtree(self.geo)
 
     @classmethod
-    def carregar(cls) -> "Rede | None":
-        pn, pa = PROCESSADOS / "rede_nos.parquet", PROCESSADOS / "rede_arestas.parquet"
+    def carregar(cls, m: Municipio) -> "Rede | None":
+        pn, pa = m.processados / "rede_nos.parquet", m.processados / "rede_arestas.parquet"
+
         if not (pn.exists() and pa.exists()):
             return None
         return cls(gpd.read_parquet(pn), gpd.read_parquet(pa))

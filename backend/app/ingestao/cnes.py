@@ -8,7 +8,7 @@ from pathlib import Path
 import geopandas as gpd
 import pandas as pd
 
-from ..config import BRUTOS, CRS_GEO, crs_metrico, municipio
+from ..config import BRUTOS, CRS_GEO, Municipio
 
 # Tipos de unidade do CNES considerados atenção básica
 TIPOS_UBS = {"1": "Posto de Saúde", "2": "Centro de Saúde/UBS"}
@@ -18,27 +18,28 @@ EXCLUIR_NOME = r"ACOLHIMENTO|PRESIDIO|AMBULATORIO|SAUDE MENTAL"
 EQUIPES_AB = {"70": "eSF", "76": "eAP"}
 
 
-def ler_estabelecimentos() -> pd.DataFrame:
-    m = municipio()
+def ler_estabelecimentos(m: Municipio) -> pd.DataFrame:
     with zipfile.ZipFile(BRUTOS / "cnes" / "cnes_estabelecimentos_BR.zip") as zf:
-        partes = [b[b["CO_IBGE"] == m["codigo_ibge6"]] for b in
+        partes = [b[b["CO_IBGE"] == m.cod6] for b in
                   pd.read_csv(zf.open("cnes_estabelecimentos.csv"), sep=";", encoding="latin1",
                               dtype=str, chunksize=100_000)]
     return pd.concat(partes)
 
 
-def ler_equipes() -> pd.DataFrame:
+def ler_equipes(m: Municipio) -> pd.DataFrame:
     """Equipes ativas por estabelecimento, do arquivo EP mais recente (.dbc)."""
     import datasus_dbc
     from dbfread import DBF
 
-    m = municipio()
-    arq = sorted((BRUTOS / "cnes").glob(f"EP{m['uf']}*.dbc"))[-1]
+    arqs = sorted(m.brutos_uf.glob(f"cnes_EP{m.uf}*.dbc"))
+    if not arqs:
+        raise FileNotFoundError(f"Sem arquivo de equipes do CNES em {m.brutos_uf} â€“ rode baixar_dados.py")
+    arq = arqs[-1]
     with tempfile.TemporaryDirectory() as tmp:
         dbf = Path(tmp) / "ep.dbf"
         datasus_dbc.decompress(str(arq), str(dbf))
         df = pd.DataFrame(iter(DBF(dbf, encoding="latin1")))
-    df = df[(df["CODUFMUN"] == m["codigo_ibge6"]) & df["TIPO_EQP"].isin(EQUIPES_AB)]
+    df = df[(df["CODUFMUN"] == m.cod6) & df["TIPO_EQP"].isin(EQUIPES_AB)]
     # DT_DESAT = "900001" (ou vazio) significa equipe NÃO desativada
     desat = df["DT_DESAT"].astype(str).str.strip()
     ativas = df[desat.isin(["", "None", "nan", "900001"])]
@@ -70,13 +71,14 @@ def _ubs_so_no_arquivo_de_equipes(eq: pd.DataFrame, ubs: pd.DataFrame, cnefe: gp
     return pd.DataFrame(linhas)
 
 
-def montar_ubs(cnefe: gpd.GeoDataFrame | None = None) -> gpd.GeoDataFrame:
-    est = ler_estabelecimentos()
+def montar_ubs(m: Municipio, cnefe: gpd.GeoDataFrame | None = None) -> gpd.GeoDataFrame:
+    est = ler_estabelecimentos(m)
     ubs = est[est["TP_UNIDADE"].isin(TIPOS_UBS) & (est["TP_GESTAO"] == "M")]
     ubs = ubs[~ubs["NO_FANTASIA"].str.contains(EXCLUIR_NOME, na=False)]
     ubs = ubs.assign(ativa=ubs["CO_MOTIVO_DESAB"].isna())
     ubs["CO_CNES"] = ubs["CO_CNES"].str.zfill(7)
-    eq = ler_equipes()
+    eq = ler_equipes(m)
+
     eq["CO_CNES"] = eq["CO_CNES"].astype(str).str.zfill(7)
     extra = _ubs_so_no_arquivo_de_equipes(eq, ubs, cnefe)
     ubs = pd.concat([ubs, extra], ignore_index=True)
@@ -93,4 +95,5 @@ def montar_ubs(cnefe: gpd.GeoDataFrame | None = None) -> gpd.GeoDataFrame:
     out = out[["cnes", "nome", "tipo", "ativa", "equipes_ab", "competencia_equipes", "logradouro",
                "numero", "bairro", "cep", "lat", "lon", "fonte_coord"]]
     g = gpd.GeoDataFrame(out, geometry=gpd.points_from_xy(out["lon"], out["lat"]), crs=CRS_GEO)
-    return g.to_crs(crs_metrico())
+    return g.to_crs(m.crs)
+

@@ -8,7 +8,7 @@ import zipfile
 import geopandas as gpd
 import pandas as pd
 
-from ..config import BRUTOS, CRS_GEO, crs_metrico, municipio
+from ..config import BRUTOS, CRS_GEO, Municipio
 
 # Faixas de demanda usadas na análise (idades inclusivas)
 FAIXAS_DEMANDA = {
@@ -26,23 +26,25 @@ def _so_digitos(s: pd.Series) -> pd.Series:
     return s.astype(str).str.replace(r"\D", "", regex=True)
 
 
-def ler_setores() -> gpd.GeoDataFrame:
-    """Malha de setores do município com população total (v0001) e domicílios."""
-    m = municipio()
-    g = gpd.read_file(BRUTOS / "ibge" / "setores_uf.gpkg", where=f"CD_MUN='{m['codigo_ibge']}'")
+def ler_setores(m: Municipio, crs: str | None = None) -> gpd.GeoDataFrame:
+    """Malha de setores do município com população total (v0001) e domicílios.
+    Sai no CRS métrico do município (ou em `crs`, se informado)."""
+    g = gpd.read_file(m.brutos_uf / "setores.gpkg", where=f"CD_MUN='{m.cod}'")
+    if not len(g):
+        raise ValueError(f"{m}: nenhum setor com CD_MUN={m.cod} em {m.brutos_uf / 'setores.gpkg'}")
     g = g.set_crs(CRS_GEO, allow_override=True)
     g = g.rename(columns={"v0001": "pop_total", "v0002": "domicilios", "v0003": "domicilios_ocupados"})
     g["CD_SETOR"] = _so_digitos(g["CD_SETOR"])
     cols = ["CD_SETOR", "SITUACAO", "CD_SIT", "NM_DIST", "CD_BAIRRO", "NM_BAIRRO", "AREA_KM2",
             "pop_total", "domicilios", "domicilios_ocupados", "geometry"]
-    g = g[cols].to_crs(crs_metrico())
+    g = g[cols].to_crs(crs or m.crs)
     g["pop_total"] = pd.to_numeric(g["pop_total"], errors="coerce").fillna(0).astype(int)
     return g
 
 
-def idade_simples_municipio() -> pd.Series:
+def idade_simples_municipio(m: Municipio) -> pd.Series:
     """População por idade simples (0–19) do município – SIDRA tabela 9514."""
-    dados = json.loads((BRUTOS / "ibge" / "sidra_9514_idade_simples.json").read_text(encoding="utf-8"))
+    dados = json.loads((m.brutos / "sidra_9514.json").read_text(encoding="utf-8"))
     pop = {}
     for linha in dados[1:]:
         rotulo = linha["D5N"]
@@ -73,7 +75,7 @@ def _pesos_faixas(idades: pd.Series) -> dict[str, dict[str, float]]:
     return pesos
 
 
-def populacao_por_faixa(setores: pd.Series) -> pd.DataFrame:
+def populacao_por_faixa(m: Municipio, setores: pd.Series) -> pd.DataFrame:
     """Lê as faixas quinquenais por setor e redistribui nas faixas de demanda."""
     alvo = set(setores)
     with zipfile.ZipFile(BRUTOS / "ibge" / "agregados_demografia_BR.zip") as zf:
@@ -87,24 +89,25 @@ def populacao_por_faixa(setores: pd.Series) -> pd.DataFrame:
     for c in ["V01006", *QUINQUENAIS]:
         # "X" = dado suprimido por sigilo (setores muito pequenos) → tratado como 0
         df[c] = pd.to_numeric(df[c].str.replace(",", "."), errors="coerce").fillna(0)
-    pesos = _pesos_faixas(idade_simples_municipio())
+    pesos = _pesos_faixas(idade_simples_municipio(m))
     for faixa, ws in pesos.items():
         df[faixa] = sum(df[v] * w for v, w in ws.items())
     return df[["CD_SETOR", *FAIXAS_DEMANDA]]
 
 
-def ler_cnefe() -> gpd.GeoDataFrame:
+def ler_cnefe(m: Municipio) -> gpd.GeoDataFrame:
     """Endereços do CNEFE 2022 com coordenadas, já com a espécie classificada."""
-    m = municipio()
-    with zipfile.ZipFile(BRUTOS / "ibge" / "cnefe_municipio.zip") as zf:
-        df = pd.read_csv(zf.open(zf.namelist()[0]), sep=";", dtype=str)
-    df = df[df["COD_MUNICIPIO"] == m["codigo_ibge"]]
+    with zipfile.ZipFile(m.brutos / "cnefe.zip") as zf:
+        nome = next(n for n in zf.namelist() if n.lower().endswith(".csv"))
+        df = pd.read_csv(zf.open(nome), sep=";", dtype=str)
+    df = df[df["COD_MUNICIPIO"] == m.cod]
     df["COD_SETOR"] = _so_digitos(df["COD_SETOR"])
     df["lat"] = pd.to_numeric(df["LATITUDE"], errors="coerce")
     df["lon"] = pd.to_numeric(df["LONGITUDE"], errors="coerce")
     df = df.dropna(subset=["lat", "lon"])
     g = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df["lon"], df["lat"]), crs=CRS_GEO)
-    return g.to_crs(crs_metrico())
+    return g.to_crs(m.crs)
+
 
 
 # Espécies do CNEFE (dicionário 2022)
