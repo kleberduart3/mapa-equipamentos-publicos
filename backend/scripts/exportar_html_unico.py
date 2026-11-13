@@ -5,7 +5,7 @@
 Usa a pasta site/ gerada por exportar_estatico.py. O arquivo funciona aberto em
 qualquer hospedagem (ou com duplo clique), sem servidor e sem outras pastas.
 Para caber em poucos MB, leva os raios de --passo em --passo metros (e os padrão).
-Os PDFs não vão dentro: o botão aponta para os PDFs publicados no GitHub Pages.
+Os PDFs não vão dentro (o botão avisa que não estão disponíveis nesta cópia).
 A biblioteca do mapa (MapLibre) vai embutida; precisa de internet só para o mapa
 de fundo (OpenStreetMap) e a fonte. ATENÇÃO: o arquivo não tem login – é público
 para quem o receber.
@@ -21,7 +21,6 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
-SITE_ONLINE = "https://kleberduart3.github.io/mapa-equipamentos-publicos/"
 
 CARREGADOR = """<script>
 /* Dados embutidos: substitui fetch("dados/...") pela leitura deste arquivo. */
@@ -75,8 +74,7 @@ def main() -> None:
                 if not any(k.endswith(chave + ".json") for k in dados):
                     sys.exit(f"falta {chave}: use um passo que exista em site/ (lá é {est['passo']} m)")
 
-    est.update(passo=a.passo, raio_min=a.passo,
-               pdf={k: SITE_ONLINE + v for k, v in est["pdf"].items()})
+    est.update(passo=a.passo, raio_min=a.passo, pdf={})
     dados["dados/estatico.json"] = json.dumps(est, ensure_ascii=False)
 
     bruto = json.dumps(dados, ensure_ascii=False, separators=(",", ":")).encode()
@@ -87,8 +85,8 @@ def main() -> None:
     js = (site / "js" / "app.js").read_text(encoding="utf-8")
     vend = site / "vendor" / "maplibre-gl-4.7.1"
     ml_css = (vend / "maplibre-gl.css").read_text(encoding="utf-8")
-    ml_js = (vend / "maplibre-gl.js").read_text(encoding="utf-8").replace("</script", "<\/script")
-    js = js.replace("</script", "<\/script")
+    ml_js = (vend / "maplibre-gl.js").read_text(encoding="utf-8").replace("</script", r"<\/script")
+    js = js.replace("</script", r"<\/script")
     html = re.sub(r'<link href="vendor/maplibre-gl-4.7.1/maplibre-gl.css" rel="stylesheet">',
                   lambda _: f"<style>\n{ml_css}\n</style>", html)
     html = re.sub(r'<script src="vendor/maplibre-gl-4.7.1/maplibre-gl.js"></script>',

@@ -31,3 +31,6 @@ dados/brutos/municipios/*/prefeitura/
 
 # Contas de teste do servidor local
 dados/contas_teste_local.txt
+
+# Versão estática (pública, sem login): gerar só localmente, nunca versionar
+site/

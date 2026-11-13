@@ -482,6 +482,7 @@ function ligarPdf() {
   const btn = $("#btn-pdf");
   btn.onclick = async () => {
     if (ESTATICO) {
+      if (!ESTATICO.pdf?.[st.modo]) { alert("Esta cópia do mapa não inclui o relatório PDF."); return; }
       const padrao = Object.entries(st.cfg.tipos).every(([t, c]) => st.raio[t] === c.raio_m);
       if (!padrao && !confirm("A versão online tem o relatório pronto só com os raios padrão. Baixar mesmo assim?")) return;
       const a = Object.assign(document.createElement("a"), { href: ESTATICO.pdf[st.modo], download: "" });
