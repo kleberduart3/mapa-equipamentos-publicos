@@ -84,3 +84,56 @@ def test_nome_obrigatorio_e_csrf(app):
     entrar(app, "e@x.gov.br")
     assert app.post(f"/api/{COD}/visoes", headers=CSRF, json={"nome": "   ", "estado": ESTADO}).status_code == 422
     assert app.post(f"/api/{COD}/visoes", json={"nome": "X", "estado": ESTADO}).status_code == 403
+
+
+def test_atualizar_visao_so_autor_ou_admin(app):
+    criar("a@x.gov.br", acessos=[(COD, "gestor")])
+    criar("b@x.gov.br", acessos=[(COD, "consulta")])
+    entrar(app, "a@x.gov.br")
+    vid = app.post(f"/api/{COD}/visoes", headers=CSRF, json={"nome": "Antes", "estado": ESTADO}).json()["id"]
+    novo = {**ESTADO, "modo": "rede", "raios": {"creche": 600}}
+    r = app.put(f"/api/{COD}/visoes/{vid}", headers=CSRF, json={"estado": novo, "nome": " Depois "})
+    assert r.status_code == 200, r.text
+    v = r.json()
+    assert v["nome"] == "Depois" and v["estado"]["modo"] == "rede" and v["estado"]["raios"] == {"creche": 600}
+    assert v["atualizada_em"] and v["atualizada_por"] == "A" and v["pode_editar"]
+    assert app.put(f"/api/{COD}/visoes/{vid}", headers=CSRF, json={}).status_code == 400
+    assert app.put(f"/api/{COD}/visoes/{vid}", headers=CSRF, json={"estado": {**ESTADO, "modo": "voo"}}).status_code == 422
+    assert app.put(f"/api/{COD}/visoes/999999", headers=CSRF, json={"nome": "X"}).status_code == 404
+    app.post("/auth/sair", headers=CSRF)
+
+    entrar(app, "b@x.gov.br")
+    assert app.get(f"/api/{COD}/visoes").json()[0]["pode_editar"] is False
+    assert app.put(f"/api/{COD}/visoes/{vid}", headers=CSRF, json={"nome": "Da B"}).status_code == 403
+
+
+def test_camadas_desligadas_por_padrao(app):
+    criar("a@x.gov.br", acessos=[(COD, "consulta")])
+    entrar(app, "a@x.gov.br")
+    sem_camadas = {k: v for k, v in ESTADO.items() if k != "camadas"}
+    v = app.post(f"/api/{COD}/visoes", headers=CSRF, json={"nome": "Só equipamentos", "estado": sem_camadas}).json()
+    assert v["estado"]["camadas"] == {"raios": False, "radar": False, "estaduais": False}
+
+
+def test_relatorio_da_visao(app, monkeypatch):
+    """O relatório da visão usa os raios e o modo guardados nela e leva o nome dela na capa."""
+    from backend.app.api import main
+    from backend.app.relatorio import gerar
+    chamadas = []
+
+    def falso(cod, destino, raios, modo, tempo, titulo):
+        chamadas.append((cod, raios, modo, titulo))
+        destino.write_bytes(b"%PDF-1.4 teste")
+        return destino
+
+    monkeypatch.setattr(gerar, "gerar_pdf", falso)
+    monkeypatch.setattr(main, "_medidor", lambda cod, modo: None)
+    criar("a@x.gov.br", acessos=[(COD, "consulta")])
+    entrar(app, "a@x.gov.br")
+    vid = app.post(f"/api/{COD}/visoes", headers=CSRF, json={"nome": "Creches norte", "estado": ESTADO}).json()["id"]
+    r = app.get(f"/api/{COD}/relatorio.pdf?visao={vid}")
+    assert r.status_code == 200, r.text
+    assert "creches_norte" in r.headers["content-disposition"]
+    assert chamadas == [(COD, {"creche": 800, "ubs": 1500}, "reta", "Creches norte")]
+    assert app.get(f"/api/{COD}/relatorio.pdf?visao=999999").status_code == 404
+    assert app.get(f"/api/{COD}/relatorio.pdf?visao=abc").status_code == 400

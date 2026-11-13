@@ -92,6 +92,8 @@ class Visao(Base):
     nome: Mapped[str] = mapped_column(String(80))
     estado: Mapped[str] = mapped_column(Text)                 # JSON validado em api/visoes.py
     criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+    atualizada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    atualizada_por: Mapped[str | None] = mapped_column(String(120))
 
 
 class Proposta(Base):
@@ -150,8 +152,30 @@ def iniciar_banco(url: str):
             cur.execute("PRAGMA busy_timeout=5000")
             cur.close()
     Base.metadata.create_all(motor)
+    _colunas_novas(motor)
     _fabrica = sessionmaker(motor, expire_on_commit=False)
     return motor
+
+
+# Colunas acrescentadas depois que o banco de produção já existia. create_all não altera
+# tabelas existentes; aqui cada uma entra com ALTER TABLE se faltar (só acréscimos, nunca
+# remoção). Na primeira mudança que não seja um acréscimo simples, adotar o Alembic.
+_ACRESCIMOS = {
+    "visoes": {"atualizada_em": "DATETIME", "atualizada_por": "VARCHAR(120)"},
+}
+
+
+def _colunas_novas(motor) -> None:
+    from sqlalchemy import inspect, text
+    insp = inspect(motor)
+    with motor.begin() as con:
+        for tabela, colunas in _ACRESCIMOS.items():
+            if not insp.has_table(tabela):
+                continue
+            existentes = {c["name"] for c in insp.get_columns(tabela)}
+            for nome, tipo in colunas.items():
+                if nome not in existentes:
+                    con.execute(text(f"ALTER TABLE {tabela} ADD COLUMN {nome} {tipo}"))
 
 
 def nova_sessao_db():

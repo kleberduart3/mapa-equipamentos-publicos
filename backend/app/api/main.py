@@ -206,21 +206,36 @@ _limite_pdf = LimiteTaxa(cfg().pdf_por_usuario_hora, 3600)
 
 @app.get("/api/{cod}/relatorio.pdf")
 async def relatorio(cod: str, request: Request, acesso=Depends(ver_municipio)):
-    """Relatório PDF com os raios atuais do mapa (?creche=500&ubs=1000&modo=rede)."""
+    """Relatório PDF com os raios atuais do mapa (?creche=500&ubs=1000&modo=rede)
+    ou com os de uma visão salva (?visao=ID: raios e modo vêm da visão, e o nome dela vai na capa)."""
+    import json as _json
+
     from ..relatorio.gerar import gerar_pdf, nome_arquivo
+    from .visoes import visao_do_municipio
 
     u = acesso[0]
     tipos = servicos.tipos(cod)
-    modo = request.query_params.get("modo", "reta")
+    titulo_visao = None
+    vid = request.query_params.get("visao")
+    if vid is not None:
+        if not vid.isdigit():
+            raise HTTPException(400, "visão inválida")
+        with nova_sessao_db() as s:
+            vis = visao_do_municipio(s, cod, int(vid))
+            estado, titulo_visao = _json.loads(vis.estado), vis.nome
+        modo = estado.get("modo", "reta")
+        raios = {t: int(r) for t, r in (estado.get("raios") or {}).items() if t in tipos and 50 <= int(r) <= 20000}
+    else:
+        modo = request.query_params.get("modo", "reta")
+        raios = {}
+        for t in tipos:
+            v = request.query_params.get(t)
+            if v is not None:
+                if not v.isdigit() or not 50 <= int(v) <= 20000:
+                    raise HTTPException(400, f"raio inválido para {t}")
+                raios[t] = int(v)
     if modo not in ("reta", "rede"):
         raise HTTPException(400, "modo inválido")
-    raios = {}
-    for t in tipos:
-        v = request.query_params.get(t)
-        if v is not None:
-            if not v.isdigit() or not 50 <= int(v) <= 20000:
-                raise HTTPException(400, f"raio inválido para {t}")
-            raios[t] = int(v)
     await run_in_threadpool(_medidor, cod, modo)
     if not _limite_pdf.permitir(f"u{u.id}"):
         raise HTTPException(429, "Limite de relatórios por hora atingido. Tente mais tarde.")
@@ -229,14 +244,16 @@ async def relatorio(cod: str, request: Request, acesso=Depends(ver_municipio)):
     async with _fila_pdf:
         pasta = Path(tempfile.mkdtemp(prefix="relatorio_"))
         m = municipio(cod)
-        destino = pasta / f"relatorio_{nome_arquivo(m.nome)}{'_a_pe' if modo == 'rede' else ''}.pdf"
+        sufixo = f"_{nome_arquivo(titulo_visao)[:40]}" if titulo_visao else ""
+        destino = pasta / f"relatorio_{nome_arquivo(m.nome)}{sufixo}{'_a_pe' if modo == 'rede' else ''}.pdf"
         try:
-            await run_in_threadpool(gerar_pdf, cod, destino, raios, modo)
+            await run_in_threadpool(gerar_pdf, cod, destino, raios, modo, 180, titulo_visao)
         except Exception:
             shutil.rmtree(pasta, ignore_errors=True)
             raise
     with nova_sessao_db() as s:
-        cr.registrar(s, "relatorio_pdf", u.id, detalhe=f"{cod} modo={modo} raios={raios}", ip=ip_cliente(request))
+        cr.registrar(s, "relatorio_pdf", u.id, ip=ip_cliente(request),
+                     detalhe=f"{cod} modo={modo} raios={raios}" + (f" visão=#{vid} {titulo_visao}" if titulo_visao else ""))
         s.commit()
     return FileResponse(destino, media_type="application/pdf", filename=destino.name,
                         background=BackgroundTask(shutil.rmtree, pasta, ignore_errors=True))

@@ -307,7 +307,8 @@ def comparacao(b: Base, raios: dict[str, int] | None = None) -> list[dict]:
     return out
 
 
-def montar_html(b: Base, raios: dict[str, int] | None = None, modo: str = "reta") -> str:
+def montar_html(b: Base, raios: dict[str, int] | None = None, modo: str = "reta",
+                titulo_visao: str | None = None) -> str:
     an = analisar(b, raios, modo)
     m, P = b.m.info(), b.P
     mat = matriculas(b)
@@ -325,6 +326,7 @@ def montar_html(b: Base, raios: dict[str, int] | None = None, modo: str = "reta"
     env.filters["n"] = fmt
     return env.get_template("modelo.html").render(
         logo=Markup(LOGO.read_text(encoding="utf-8")) if LOGO.exists() else "Equicidade",
+        titulo_visao=titulo_visao,
         m=m, data=f"{hoje.day} de {MESES[hoje.month - 1]} de {hoje.year}", P=P, fr=b.fr,
         pop=int(b.setores["pop_total"].sum()), n_setores=len(b.setores), tipos=tipos,
         mapa_prioridade=mapa_prioridade(b, an), achados=achados(an, mat) + achado_rede(comp, modo), pendencias=pendencias(b),
@@ -342,11 +344,11 @@ def nome_arquivo(nome: str) -> str:
 
 
 def gerar_pdf(cod: str, destino: Path | None = None, raios: dict[str, int] | None = None,
-              modo: str = "reta", tempo_limite_s: float = 180) -> Path:
+              modo: str = "reta", tempo_limite_s: float = 180, titulo_visao: str | None = None) -> Path:
     from playwright.sync_api import sync_playwright
 
     b = base(cod)
-    html = montar_html(b, raios, modo)
+    html = montar_html(b, raios, modo, titulo_visao)
     m = b.m.info()
     sufixo = "_a_pe" if modo == "rede" else ""
     destino = destino or b.m.saidas / f"relatorio_{nome_arquivo(m['nome'])}_{date.today():%Y%m%d}{sufixo}.pdf"

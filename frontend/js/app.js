@@ -794,14 +794,33 @@ function desenharVisoes() {
     <li class="visao">
       <button type="button" class="visao-abrir" data-i="${i}" title="Abrir esta visão no mapa">
         <span class="visao-nome">${esc(v.nome)}</span>
-        <span class="visao-sub">${esc(v.autor)} · ${data(v.criada_em)}</span>
+        <span class="visao-sub">${esc(v.autor)} · ${data(v.criada_em)}${v.atualizada_em
+          ? ` · atualizada em ${data(v.atualizada_em)}${v.atualizada_por && v.atualizada_por !== v.autor ? ` por ${esc(v.atualizada_por)}` : ""}` : ""}</span>
       </button>
       <span class="visao-acoes">
+        <button type="button" class="lnk" data-relatorio="${i}" title="Gerar o relatório PDF com os raios e o modo de distância desta visão">Relatório</button>
+        ${v.pode_editar ? `<button type="button" class="lnk" data-atualizar="${i}" title="Guardar nesta visão o que está na tela agora">Atualizar</button>` : ""}
         <button type="button" class="lnk" data-link="${i}" title="Copiar o link desta visão">Link</button>
         ${v.pode_apagar ? `<button type="button" class="lnk perigo" data-apagar="${i}" title="Apagar esta visão">Apagar</button>` : ""}
       </span>
     </li>`).join("");
   $("#visoes").querySelectorAll("[data-i]").forEach((b) => (b.onclick = () => aplicarEstado(lista[b.dataset.i].estado)));
+  $("#visoes").querySelectorAll("[data-relatorio]").forEach((b) => (b.onclick = () => {
+    const v = lista[b.dataset.relatorio];
+    baixarRelatorio(`/api/${st.cod}/relatorio.pdf?visao=${v.id}`, b, "Gerando… (~40 s)");
+  }));
+  $("#visoes").querySelectorAll("[data-atualizar]").forEach((b) => (b.onclick = async () => {
+    const v = lista[b.dataset.atualizar];
+    if (!confirm(`Substituir a visão “${v.nome}” pelo que está na tela agora (serviço, raios, modo de distância, camadas e enquadramento)?`)) return;
+    b.disabled = true;
+    const r = await requisitar(`/api/${st.cod}/visoes/${v.id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: capturarEstado() }),
+    });
+    b.disabled = false;
+    if (!r.ok) { alert(r.status === 422 ? "Não foi possível atualizar: a configuração da tela não é válida." : await detalheErro(r)); return; }
+    st.visoes = null;
+    await carregarVisoes();
+  }));
   $("#visoes").querySelectorAll("[data-link]").forEach((b) => (b.onclick = async () => {
     const v = lista[b.dataset.link];
     const url = `${location.origin}${location.pathname}#m=${st.cod}&v=${v.id}`;
@@ -859,25 +878,29 @@ function ligarPdf() {
       return;
     }
     const q = new URLSearchParams([...Object.entries(st.raio).map(([t, r]) => [t, String(r)]), ["modo", st.modo]]);
-    const txt = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "Gerando relatório… (cerca de 40 s)";
-    try {
-      const r = await requisitar(`/api/${st.cod}/relatorio.pdf?${q}`, { headers: { Accept: "application/pdf" } });
-      if (!r.ok) throw new Error(await detalheErro(r));
-
-      const blob = await r.blob();
-      const nome = (r.headers.get("content-disposition") || "").match(/filename="?([^";]+)/)?.[1] || "relatorio.pdf";
-      const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: nome });
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-    } catch (e) {
-      alert("Não foi possível gerar o relatório: " + e.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = txt;
-    }
+    baixarRelatorio(`/api/${st.cod}/relatorio.pdf?${q}`, btn, "Gerando relatório… (cerca de 40 s)");
   };
+}
+
+/* Gera o PDF no servidor e baixa; o botão mostra o andamento. */
+async function baixarRelatorio(url, btn, textoEspera) {
+  const txt = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = textoEspera;
+  try {
+    const r = await requisitar(url, { headers: { Accept: "application/pdf" } });
+    if (!r.ok) throw new Error(await detalheErro(r));
+    const blob = await r.blob();
+    const nome = (r.headers.get("content-disposition") || "").match(/filename="?([^";]+)/)?.[1] || "relatorio.pdf";
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: nome });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } catch (e) {
+    alert("Não foi possível gerar o relatório: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = txt;
+  }
 }
 
 /* ---------- Upload IPTU ---------- */

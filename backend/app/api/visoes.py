@@ -2,7 +2,10 @@
 
     GET    /api/{cod}/visoes          lista as visões do município (todas as contas com acesso veem)
     POST   /api/{cod}/visoes          salva {nome, estado}
+    PUT    /api/{cod}/visoes/{id}     atualiza {nome?, estado?} (só o autor ou o administrador)
     DELETE /api/{cod}/visoes/{id}     apaga (só o autor ou o administrador)
+
+O relatório PDF de uma visão sai por GET /api/{cod}/relatorio.pdf?visao={id} (api/main.py).
 
 O estado é validado campo a campo: nada além do que o mapa sabe restaurar.
 """
@@ -18,7 +21,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..acesso import credenciais as cr
-from ..acesso.modelos import Usuario, Visao
+from ..acesso.modelos import Usuario, Visao, agora
 from ..acesso.web import db, ip_cliente, ver_municipio
 
 MAX_POR_MUNICIPIO = 200
@@ -32,8 +35,8 @@ class _Rigido(BaseModel):
 
 
 class Camadas(_Rigido):
-    raios: bool = True
-    radar: bool = True
+    raios: bool = False                     # o mapa abre só com os equipamentos
+    radar: bool = False
     estaduais: bool = False
 
 
@@ -88,9 +91,26 @@ class VisaoNova(_Rigido):
         return v
 
 
+class VisaoEdicao(_Rigido):
+    nome: str | None = Field(None, min_length=1, max_length=80)
+    estado: Estado | None = None
+
+    _n = field_validator("nome")(lambda cls, v: VisaoNova._nome(v) if v is not None else v)
+
+
 def _saida(v: Visao, u: Usuario) -> dict:
+    dono = u.admin or v.usuario_id == u.id
     return {"id": v.id, "nome": v.nome, "autor": v.autor, "criada_em": v.criada_em.isoformat(),
-            "estado": json.loads(v.estado), "pode_apagar": u.admin or v.usuario_id == u.id}
+            "atualizada_em": v.atualizada_em.isoformat() if v.atualizada_em else None,
+            "atualizada_por": v.atualizada_por,
+            "estado": json.loads(v.estado), "pode_apagar": dono, "pode_editar": dono}
+
+
+def visao_do_municipio(s: Session, cod: str, vid: int) -> Visao:
+    v = s.get(Visao, vid)
+    if v is None or v.cod_municipio != cod:
+        raise HTTPException(404, "Visão não encontrada.")
+    return v
 
 
 @rotas.get("")
@@ -115,12 +135,31 @@ def salvar(cod: str, dados: VisaoNova, request: Request, acesso=Depends(ver_muni
     return _saida(v, u)
 
 
+@rotas.put("/{vid}")
+def atualizar(cod: str, vid: int, dados: VisaoEdicao, request: Request, acesso=Depends(ver_municipio),
+              s: Session = Depends(db)):
+    """Substitui a configuração (e/ou o nome) de uma visão pela que está na tela."""
+    u = acesso[0]
+    v = visao_do_municipio(s, cod, vid)
+    if not (u.admin or v.usuario_id == u.id):
+        raise HTTPException(403, "Só quem salvou a visão (ou o administrador) pode atualizá-la.")
+    if dados.nome is None and dados.estado is None:
+        raise HTTPException(400, "Nada para atualizar.")
+    if dados.nome is not None:
+        v.nome = dados.nome
+    if dados.estado is not None:
+        v.estado = dados.estado.model_dump_json(exclude_none=True)
+    v.atualizada_em = agora()
+    v.atualizada_por = u.nome
+    cr.registrar(s, "visao_atualizada", u.id, detalhe=f"{cod} #{vid} {v.nome}", ip=ip_cliente(request))
+    s.commit()
+    return _saida(v, u)
+
+
 @rotas.delete("/{vid}", status_code=204)
 def apagar(cod: str, vid: int, request: Request, acesso=Depends(ver_municipio), s: Session = Depends(db)):
     u = acesso[0]
-    v = s.get(Visao, vid)
-    if v is None or v.cod_municipio != cod:
-        raise HTTPException(404, "Visão não encontrada.")
+    v = visao_do_municipio(s, cod, vid)
     if not (u.admin or v.usuario_id == u.id):
         raise HTTPException(403, "Só quem salvou a visão (ou o administrador) pode apagá-la.")
     s.delete(v)

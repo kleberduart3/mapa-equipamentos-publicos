@@ -202,7 +202,10 @@ body { font-family: var(--sans); color: var(--texto); background: var(--fundo); 
 
 /* visões salvas */
 .visoes { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.visao { display: flex; align-items: center; gap: 6px; border: 1px solid var(--borda); border-radius: var(--raio); padding: 3px 6px 3px 3px; }
+/* nome em cima, ações (Relatório, Atualizar, Link, Apagar) numa linha embaixo */
+.visao { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; border: 1px solid var(--borda); border-radius: var(--raio); padding: 3px 6px 3px 3px; }
+.visao .visao-abrir { flex: 1 1 100%; }
+.visao .visao-acoes { flex: 1 1 100%; flex-wrap: wrap; padding: 0 2px 2px; border-top: 1px solid var(--borda); }
 .visao:hover { border-color: var(--cobertura); }
 .visao-abrir { flex: 1; min-width: 0; font: inherit; text-align: left; background: none; border: 0; border-radius: 9px;
   padding: 7px 9px; cursor: pointer; color: var(--texto); display: flex; flex-direction: column; gap: 2px; }
@@ -282,9 +285,13 @@ body { font-family: var(--sans); color: var(--texto); background: var(--fundo); 
 .maplibregl-popup-close-button { font-size: 18px; width: 28px; height: 28px; border-radius: 8px; color: var(--texto-2); }
 .pop h4 { margin: 0 0 4px; font-size: 15px; letter-spacing: -.01em; }
 .pop .tag { display: inline-block; font-size: 11px; font-weight: 600; color: #fff; border-radius: 99px; padding: 2px 9px; margin-bottom: 6px; }
-.pop dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 8px 0 0; font-size: 12.5px; }
-.pop dt { color: var(--texto-2); }
-.pop dd { margin: 0; font-weight: 600; }
+/* Cada informação é um bloco: rótulo pequeno em cima, valor logo abaixo, linha fina entre
+   blocos. Em duas colunas o valor quebrava em várias linhas e ficava difícil ligar ao rótulo. */
+.pop dl { margin: 10px 0 0; font-size: 12.5px; }
+.pop dt { color: var(--texto-2); line-height: 1.35; padding-top: 7px; border-top: 1px solid var(--borda); }
+.pop dt:first-child { border-top: 0; padding-top: 0; }
+.pop dd { margin: 2px 0 7px; font-weight: 600; font-size: 14px; color: var(--texto); line-height: 1.3; }
+.pop dd:last-child { margin-bottom: 0; }
 .pop .alerta { color: var(--deficit); font-size: 12px; margin-top: 8px; font-weight: 500; }
 .pop .nota { margin-top: 8px; }
 

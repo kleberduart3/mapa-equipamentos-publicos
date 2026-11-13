@@ -53,7 +53,7 @@
 <section class="pagina">
   <div class="capa-topo">
     <div class="capa-marca">{{ logo }}<span class="sub">equicidade.com.br</span></div>
-    <div class="sub">Diagnóstico de cobertura de equipamentos públicos municipais</div>
+    <div class="sub">Diagnóstico de cobertura de equipamentos públicos municipais{% if titulo_visao %} · visão salva <b>“{{ titulo_visao }}”</b>{% endif %}</div>
     <h1>{{ m.nome }} – {{ m.uf }}</h1>
     <div class="sub">{{ data }} · Distância {{ 'a pé pelas ruas (OpenStreetMap)' if modo == 'rede' else 'em linha reta' }} · Fontes: IBGE (Censo 2022, CNEFE), INEP (Censo Escolar 2024), CNES/DATASUS</div>
   </div>
