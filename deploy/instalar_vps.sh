@@ -13,7 +13,8 @@
 #      SSH só por chave, swap de 2 GB;
 #   3. instala o Docker;
 #   4. clona (ou atualiza) o repositório em /srv/mapa;
-#   5. envia os dados processados dos municípios (dados/processados e dados/saidas);
+#   5. envia os dados processados dos municípios (dados/processados e dados/saidas) e os
+#      microdados do Censo Escolar (o relatório PDF soma as matrículas por rede a partir deles);
 #   6. cria o .env de produção (só na primeira vez);
 #   7. sobe app + Caddy (HTTPS automático) e espera ficar saudável;
 #   8. instala a cópia de segurança diária;
@@ -82,7 +83,7 @@ ssh_vps "if [ -d /srv/mapa/.git ]; then git -C /srv/mapa pull --ff-only; else gi
 
 passo "5/9 Dados dos municípios"
 pacote="$(mktemp -t equicidade-dados.XXXXXX).tgz"
-tar czf "$pacote" -C "$RAIZ" dados/processados dados/saidas
+tar czf "$pacote" -C "$RAIZ" dados/processados dados/saidas $(cd "$RAIZ" && ls dados/brutos/inep/microdados_censo_escolar_*.zip 2>/dev/null)
 echo "pacote: $(du -h "$pacote" | cut -f1)"
 scp -i "$CHAVE" -o StrictHostKeyChecking=accept-new -q "$pacote" "root@$IP:/root/equicidade-dados.tgz"
 rm -f "$pacote"
