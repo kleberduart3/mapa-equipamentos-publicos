@@ -1,5 +1,5 @@
 # HTTPS automático (Let's Encrypt) para os dois endereços:
-#   MAPA_DOMINIO_SITE  equicidade.com.br       landing page (arquivos estáticos de landing/)
+#   MAPA_DOMINIO_SITE  equicidade.com.br       landing page (opcional; hoje no GitHub Pages)
 #   MAPA_DOMINIO       mapa.equicidade.com.br  a ferramenta (login, mapa, API)
 {
 	email {$MAPA_EMAIL_CERTIFICADO}
@@ -25,23 +25,27 @@
 	}
 }
 
-# ---------------------------------------------------------------- landing page
-{$MAPA_DOMINIO_SITE} {
-	encode zstd gzip
-	import cabecalhos_site
-	root * /srv/landing
-	@estaticos path /assets/* /favicon* /apple-touch-icon.png
-	header @estaticos Cache-Control "public, max-age=604800"
-	file_server
-	log {
-		output stdout
-		format json
-	}
-}
-
-www.{$MAPA_DOMINIO_SITE} {
-	redir https://{$MAPA_DOMINIO_SITE}{uri} permanent
-}
+# ---------------------------------------------------------------- landing page (opcional)
+# Hoje a landing é publicada pelo GitHub Pages (repositório equicidade-site), com o DNS de
+# equicidade.com.br apontando para o GitHub. Para servir a landing por este servidor, aponte o
+# DNS para a VPS, defina MAPA_DOMINIO_SITE no .env e tire o # das linhas abaixo.
+# {$MAPA_DOMINIO_SITE} {
+# 	encode zstd gzip
+# 	import cabecalhos_site
+# 	root * /srv/landing
+# 	@estaticos path /assets/* /favicon* /apple-touch-icon.png
+# 	header @estaticos Cache-Control "public, max-age=604800"
+# 	file_server
+# 	log {
+# 		output stdout
+# 		format json
+# 	}
+# }
+#
+# www.{$MAPA_DOMINIO_SITE} {
+# 	redir https://{$MAPA_DOMINIO_SITE}{uri} permanent
+# }
+#
 
 # ---------------------------------------------------------------- ferramenta
 {$MAPA_DOMINIO} {

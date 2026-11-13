@@ -44,18 +44,37 @@ Detalhes e regras de uso: [`marca/README.md`](../marca/README.md).
 - **Tom:** direto, com dados concretos e sem jargão de tecnologia. Exemplo: "o bairro Primavera tem 1.200 crianças e
   nenhuma creche a menos de 1 km".
 
-## Domínios
+## Domínios e publicação
 
-| Endereço | O quê | Servido por |
+| Endereço | O quê | Onde roda |
 |---|---|---|
-| `equicidade.com.br` (e `www.`, que redireciona) | landing page | Caddy, arquivos de `landing/` |
-| `mapa.equicidade.com.br` | a ferramenta (login, mapa, API) | Caddy → container `app` |
+| `equicidade.com.br` e `www.` | landing page | **GitHub Pages**, repositório [`equicidade-site`](https://github.com/kleberduart3/equicidade-site) |
+| `mapa.equicidade.com.br` | a ferramenta (login, mapa, API) | VPS com Docker + Caddy (`docs/implantacao.md`) |
 
-DNS: dois registros **A** (e **AAAA** se houver IPv6) apontando para a VPS:
-- `equicidade.com.br`;
-- `mapa.equicidade.com.br`.
+O domínio foi registrado no Registro.br em 13/11/2026 e usa o DNS do próprio Registro.br. Em **Registro.br → equicidade.com.br → DNS → Editar zona**, crie:
 
-Opcionalmente, `www.equicidade.com.br`. O botão "Entrar" da landing já aponta para `https://mapa.equicidade.com.br/`.
+| Nome | Tipo | Valor |
+|---|---|---|
+| *(vazio, o próprio domínio)* | A | `185.199.108.153` |
+| *(vazio)* | A | `185.199.109.153` |
+| *(vazio)* | A | `185.199.110.153` |
+| *(vazio)* | A | `185.199.111.153` |
+| `www` | CNAME | `kleberduart3.github.io.` |
+| `mapa` | A | IP da VPS (quando ela existir) |
+
+Depois que o DNS propagar (de minutos a algumas horas), o GitHub emite o certificado. Em seguida, em
+**equicidade-site → Settings → Pages**, marque **Enforce HTTPS**.
+
+**Atualizar a landing:**
+1. A cópia de trabalho fica em [`landing/`](../landing/) neste repositório.
+2. Para publicar, copie o conteúdo de `landing/` para o repositório `equicidade-site` e faça o push. Fica de fora só
+   o `README.md` de lá.
+
+Por enquanto a landing é publicada por dois caminhos (esta cópia e o `equicidade-site`). Para ter um só, desligue o
+Pages do `equicidade-site` e ative o deste repositório com o domínio. Isso é uma decisão sua, porque mexe no outro
+repositório.
+
+O botão "Entrar" da landing aponta para `https://mapa.equicidade.com.br/`, que só funciona depois da VPS.
 
 **Formulário de demonstração:** não envia nada ao servidor. Ele abre o WhatsApp `(82) 98818-9617` com os dados
 preenchidos (`landing/assets/js/main.js`).
