@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://equicidade.com.br/sitemap.xml
