@@ -39,6 +39,7 @@ from ..acesso.web import (CabecalhosSeguranca, LimiteTaxa, ProtecaoCSRF, gerir_m
                           usuario_opcional, ver_municipio)
 from ..analise.contexto import MunicipioNaoProcessado
 from ..config import RAIZ, municipio, municipios
+from .visoes import rotas as rotas_visoes
 
 FRONT = RAIZ / "frontend"
 log = logging.getLogger("mapa")
@@ -70,6 +71,7 @@ app.add_middleware(ProtecaoCSRF)
 app.add_middleware(CabecalhosSeguranca)
 app.include_router(rotas_auth)
 app.include_router(rotas_admin)
+app.include_router(rotas_visoes)
 
 
 @app.exception_handler(MunicipioNaoProcessado)

@@ -134,11 +134,15 @@ async function iniciar() {
   sel.addEventListener("change", () => carregarMunicipio(sel.value));
   ligarUpload();
   ligarPdf();
+  ligarVisoes();
   let lembrado = null;
   try { lembrado = localStorage.getItem(CHAVE_MUNICIPIO); } catch { /* armazenamento bloqueado */ }
+  const link = lerLinkVisao();
+  if (link && munis.some((m) => m.codigo === link.cod)) lembrado = link.cod;
   const inicial = munis.some((m) => m.codigo === lembrado) ? lembrado : munis[0].codigo;
   sel.value = inicial;
   await carregarMunicipio(inicial);
+  if (link?.cod === inicial) await abrirVisaoDoLink(link.id);
 }
 
 /* ---------- Conta (menu do usuário) ---------- */
@@ -177,6 +181,7 @@ function ligarConta(eu) {
 
 async function carregarMunicipio(cod) {
   st.cod = cod;
+  st.visoes = null;
   try { localStorage.setItem(CHAVE_MUNICIPIO, cod); } catch { /* armazenamento bloqueado */ }
   st.cfg = await api(`/${cod}/config`);
   $("#btn-upload").hidden = Boolean(ESTATICO) || st.cfg.papel !== "gestor";
@@ -196,7 +201,7 @@ async function carregarMunicipio(cod) {
   const b = st.cfg.bbox;
   st.map.fitBounds([[b[0], b[1]], [b[2], b[3]]], { padding: 40, duration: 0 });
 
-  aoCarregar(() => {
+  await new Promise((pronto) => aoCarregar(() => {
     fonte("limite", limite);
     camada({ id: "limite-linha", type: "line", source: "limite", paint: { "line-color": "#0D1450", "line-width": 2, "line-dasharray": [3, 2] } });
     fonte("deficit", vazio());
@@ -227,7 +232,9 @@ async function carregarMunicipio(cod) {
     montarLateral();
     desenharPins();
     tipos.forEach((t) => atualizarCobertura(t));
-  });
+    pronto();
+  }));
+  carregarVisoes();
 }
 
 function criarMapa() {
@@ -602,7 +609,7 @@ function montarLateral() {
   st.equip.features.forEach((f) => (qtd[f.properties.tipo] = (qtd[f.properties.tipo] || 0) + 1));
 
   $("#camadas").innerHTML = Object.entries(tipos).map(([t, c]) => `
-    <label class="toggle"><input type="checkbox" data-tipo="${t}" checked><span class="trilho"></span>
+    <label class="toggle"><input type="checkbox" data-tipo="${t}"${st.visivel[t] === false ? "" : " checked"}><span class="trilho"></span>
       ${svgIcone(c.cor, c.icone)}<span>${esc(c.rotulo)} <span class="qtd">(${qtd[t] || 0})</span></span></label>`).join("");
   $("#camadas").querySelectorAll("input").forEach((i) => i.addEventListener("change", () => {
     const t = i.dataset.tipo;
@@ -701,6 +708,138 @@ function atualizarLegenda() {
     <div class="leg-item"><span class="leg-hex"></span><span>Demanda não resolvida</span></div>
     <div class="leg-item"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#C93A27" stroke-width="1.6" stroke-dasharray="3 2.2"/></svg><span>Localização a confirmar</span></div>
     <div class="nota">${APE() ? "Mancha: alcance a pé pelas ruas. " : ""}Zona rural: raio × ${fmt(st.cfg.fator_raio_rural, 1)}</div>`;
+}
+
+/* ---------- Visões salvas ---------- */
+/* O estado é o que a tela mostra; o servidor valida campo a campo (api/visoes.py). */
+function capturarEstado() {
+  const c = st.map.getCenter(), r6 = (x) => Number(x.toFixed(6));
+  const e = {
+    mostrar: st.mostrar, modo: st.modo, unid: st.unid, raios: { ...st.raio }, visiveis: { ...st.visivel },
+    camadas: { raios: $("#tg-raios").checked, radar: $("#tg-radar").checked, estaduais: $("#tg-estaduais").checked },
+    mapa: { lng: r6(c.lng), lat: r6(c.lat), zoom: Number(st.map.getZoom().toFixed(2)) },
+  };
+  if (st.sim) e.sim = { tipo: st.sim.tipo, lng: r6(st.sim.lngLat.lng), lat: r6(st.sim.lngLat.lat) };
+  return e;
+}
+
+function aplicarVisibilidade() {
+  Object.entries(st.pins).forEach(([t, ms]) => ms.forEach((m) => (m.getElement().style.display =
+    (t === "contexto_medio" ? $("#tg-estaduais").checked : st.visivel[t] !== false) ? "" : "none")));
+  Object.entries(st.radares).forEach(([t, ms]) => ms.forEach((m) => (m.getElement().style.display =
+    st.visivel[t] !== false && $("#tg-radar").checked ? "" : "none")));
+}
+
+function aplicarEstado(e) {
+  const tipos = Object.keys(st.cfg.tipos);
+  const [rmin, rmax] = [ESTATICO?.raio_min ?? 200, ESTATICO?.raio_max ?? 3000];
+  limparSimulacao();
+  tipos.forEach((t) => {
+    const r = e.raios?.[t];
+    if (Number.isFinite(r)) st.raio[t] = Math.min(rmax, Math.max(rmin, r));
+    st.visivel[t] = e.visiveis?.[t] ?? true;
+  });
+  $("#tg-raios").checked = e.camadas?.raios ?? true;
+  $("#tg-radar").checked = e.camadas?.radar ?? true;
+  $("#tg-estaduais").checked = e.camadas?.estaduais ?? false;
+  st.unid = e.unid === "setor" ? "setor" : "hex";
+  st.modo = e.modo === "rede" && st.cfg.tem_rede ? "rede" : "reta";
+  st.mostrar = e.mostrar === "prioridade" || st.cfg.tipos[e.mostrar] ? e.mostrar : tipos[0];
+  montarLateral();                     // controles a partir de st (e chama mudarMostrar)
+  aplicarVisibilidade();
+  tipos.forEach((t) => { desenharRaios(t); atualizarCobertura(t); });
+  atualizarLegenda();
+  if (e.mapa) st.map.jumpTo({ center: [e.mapa.lng, e.mapa.lat], zoom: e.mapa.zoom });
+  if (e.sim && st.cfg.tipos[e.sim.tipo] && !ESTATICO) {
+    $("#sim-tipo").value = e.sim.tipo;
+    posicionarSimulacao(new maplibregl.LngLat(e.sim.lng, e.sim.lat));
+  }
+}
+
+/* Link de uma visão: #m=CÓDIGO&v=ID (o fragmento não vai para o servidor nem para os logs) */
+function lerLinkVisao() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  const cod = q.get("m"), id = Number(q.get("v"));
+  return /^\d{7}$/.test(cod || "") && Number.isInteger(id) && id > 0 ? { cod, id } : null;
+}
+
+async function abrirVisaoDoLink(id) {
+  history.replaceState(null, "", location.pathname + location.search);
+  const v = (st.visoes || await carregarVisoes()).find((x) => x.id === id);
+  if (v) aplicarEstado(v.estado);
+  else alert("Essa visão não existe mais (pode ter sido apagada).");
+}
+
+async function carregarVisoes() {
+  if (ESTATICO) { $("#sec-visoes").hidden = true; return []; }
+  const cod = st.cod;
+  try {
+    const lista = await api(`/${cod}/visoes`);
+    if (cod !== st.cod) return lista;
+    st.visoes = lista;
+  } catch { st.visoes = []; }
+  desenharVisoes();
+  return st.visoes;
+}
+
+function desenharVisoes() {
+  const lista = st.visoes || [];
+  const data = (iso) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  $("#visoes-vazio").hidden = lista.length > 0;
+  $("#visoes").innerHTML = lista.map((v, i) => `
+    <li class="visao">
+      <button type="button" class="visao-abrir" data-i="${i}" title="Abrir esta visão no mapa">
+        <span class="visao-nome">${esc(v.nome)}</span>
+        <span class="visao-sub">${esc(v.autor)} · ${data(v.criada_em)}</span>
+      </button>
+      <span class="visao-acoes">
+        <button type="button" class="lnk" data-link="${i}" title="Copiar o link desta visão">Link</button>
+        ${v.pode_apagar ? `<button type="button" class="lnk perigo" data-apagar="${i}" title="Apagar esta visão">Apagar</button>` : ""}
+      </span>
+    </li>`).join("");
+  $("#visoes").querySelectorAll("[data-i]").forEach((b) => (b.onclick = () => aplicarEstado(lista[b.dataset.i].estado)));
+  $("#visoes").querySelectorAll("[data-link]").forEach((b) => (b.onclick = async () => {
+    const v = lista[b.dataset.link];
+    const url = `${location.origin}${location.pathname}#m=${st.cod}&v=${v.id}`;
+    try { await navigator.clipboard.writeText(url); b.textContent = "Copiado!"; setTimeout(() => (b.textContent = "Link"), 1800); }
+    catch { prompt("Copie o link da visão:", url); }
+  }));
+  $("#visoes").querySelectorAll("[data-apagar]").forEach((b) => (b.onclick = async () => {
+    const v = lista[b.dataset.apagar];
+    if (!confirm(`Apagar a visão “${v.nome}”? A equipe do município também deixa de vê-la.`)) return;
+    const r = await requisitar(`/api/${st.cod}/visoes/${v.id}`, { method: "DELETE" });
+    if (!r.ok) { alert(await detalheErro(r)); return; }
+    carregarVisoes();
+  }));
+}
+
+function ligarVisoes() {
+  if (ESTATICO) { $("#sec-visoes").hidden = true; return; }
+  const dlg = $("#dlg-visao");
+  $("#btn-salvar-visao").onclick = () => { $("#form-visao").reset(); $("#res-visao").textContent = ""; dlg.showModal(); };
+  $("#btn-visao-fechar").onclick = () => dlg.close();
+  $("#form-visao").onsubmit = async (ev) => {
+    ev.preventDefault();
+    $("#res-visao").textContent = "Salvando…";
+    const r = await requisitar(`/api/${st.cod}/visoes`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome: $("#visao-nome").value, estado: capturarEstado() }),
+    });
+    if (!r.ok) { $("#res-visao").textContent = r.status === 422 ? "Não foi possível salvar: confira o nome." : await detalheErro(r); return; }
+    dlg.close();
+    carregarVisoes();
+  };
+  window.addEventListener("hashchange", async () => {
+    const link = lerLinkVisao();
+    if (!link) return;
+    if (link.cod !== st.cod) {
+      if (![...$("#municipio").options].some((o) => o.value === link.cod)) return;
+      $("#municipio").value = link.cod;
+      st.visoes = null;
+      await carregarMunicipio(link.cod);
+    }
+    await abrirVisaoDoLink(link.id);
+  });
 }
 
 /* ---------- Relatório PDF ---------- */

@@ -24,6 +24,15 @@
     </label>
     <div class="acoes">
       <button id="btn-upload" class="btn sec" hidden>Importar dados da prefeitura</button>
+      <div class="conta" id="exportar">
+        <button id="btn-baixar-mapa" class="btn sec" aria-haspopup="menu" aria-expanded="false"
+          title="O mapa como está na tela, com legenda, escala e fontes">Baixar mapa</button>
+        <div class="menu-conta" id="menu-baixar" role="menu" hidden>
+          <button type="button" role="menuitem" data-formato="png">Imagem (PNG)</button>
+          <button type="button" role="menuitem" data-formato="a4">PDF A4 deitado</button>
+          <button type="button" role="menuitem" data-formato="a3">PDF A3 deitado</button>
+        </div>
+      </div>
       <button id="btn-pdf" class="btn" title="Gera o relatório com os raios atuais do mapa">Exportar relatório PDF</button>
       <div class="conta" id="conta" hidden>
         <button id="btn-conta" class="btn sec" aria-haspopup="menu" aria-expanded="false"></button>
@@ -38,6 +47,12 @@
 
   <main class="corpo">
     <aside class="lateral">
+      <section id="sec-visoes">
+        <h2>Visões salvas</h2>
+        <button type="button" class="btn sec btn-peq" id="btn-salvar-visao">Salvar esta visão</button>
+        <ul class="visoes" id="visoes"></ul>
+        <p class="nota" id="visoes-vazio">Guarde raios, camadas e o enquadramento do mapa para voltar a eles depois. A equipe do município vê as visões salvas.</p>
+      </section>
       <section>
         <h2>Camadas</h2>
         <div id="camadas"></div>
@@ -117,6 +132,21 @@
     </form>
   </dialog>
 
+  <dialog id="dlg-visao">
+    <form class="dlg" id="form-visao">
+      <h2>Salvar esta visão</h2>
+      <p class="nota">Guarda o que está na tela: o que o mapa mostra, os raios, o modo de distância, as camadas,
+        o enquadramento e a unidade simulada.</p>
+      <label class="campo-rot">Nome<input type="text" id="visao-nome" maxlength="80" required
+        placeholder="Ex.: Creches – bairros do norte, 800 m a pé"></label>
+      <p id="res-visao" class="nota" aria-live="polite"></p>
+      <div class="dlg-acoes">
+        <button type="button" class="btn sec" id="btn-visao-fechar">Cancelar</button>
+        <button type="submit" class="btn">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
   <div class="aviso-vazio" id="aviso-vazio" hidden>
     <h2>Nenhum município liberado</h2>
     <p>Sua conta ainda não tem acesso a nenhum município. Fale com o administrador.</p>
@@ -124,6 +154,7 @@
 
   <script src="vendor/maplibre-gl-4.7.1/maplibre-gl.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/exportar.js"></script>
 
 </body>
 </html>

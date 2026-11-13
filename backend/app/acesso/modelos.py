@@ -81,6 +81,19 @@ class Convite(Base):
     usuario: Mapped[Usuario] = relationship()
 
 
+class Visao(Base):
+    """Configuração do mapa salva com um nome (raios, camadas, enquadramento…).
+    Todas as contas com acesso ao município veem; só o autor ou o admin apaga."""
+    __tablename__ = "visoes"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cod_municipio: Mapped[str] = mapped_column(String(7), index=True)
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id", ondelete="SET NULL"), index=True)
+    autor: Mapped[str] = mapped_column(String(120))          # nome guardado: a visão sobrevive à conta
+    nome: Mapped[str] = mapped_column(String(80))
+    estado: Mapped[str] = mapped_column(Text)                 # JSON validado em api/visoes.py
+    criada_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=agora)
+
+
 class Evento(Base):
     """Trilha de auditoria: logins, falhas, mudanças de conta, uploads, relatórios."""
     __tablename__ = "eventos"
