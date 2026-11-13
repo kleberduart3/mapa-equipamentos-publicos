@@ -12,10 +12,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Dependências primeiro (camada reaproveitada enquanto requirements.txt não muda)
+# Dependências primeiro (camada reaproveitada enquanto requirements.txt não muda).
+# libatomic1 é do Node do Playwright: pedida explicitamente para não sair junto com o compilador.
 COPY requirements.txt .
 RUN apt-get update \
- && apt-get install -y --no-install-recommends build-essential \
+ && apt-get install -y --no-install-recommends build-essential libatomic1 \
  && pip install -r requirements.txt \
  && python -m playwright install --with-deps chromium \
  && apt-get purge -y build-essential && apt-get autoremove -y \
