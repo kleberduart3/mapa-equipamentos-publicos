@@ -743,8 +743,8 @@ function aplicarEstado(e) {
     if (Number.isFinite(r)) st.raio[t] = Math.min(rmax, Math.max(rmin, r));
     st.visivel[t] = e.visiveis?.[t] ?? true;
   });
-  $("#tg-raios").checked = e.camadas?.raios ?? true;
-  $("#tg-radar").checked = e.camadas?.radar ?? true;
+  $("#tg-raios").checked = e.camadas?.raios ?? false;      // padrão: o mapa abre só com os equipamentos
+  $("#tg-radar").checked = e.camadas?.radar ?? false;
   $("#tg-estaduais").checked = e.camadas?.estaduais ?? false;
   st.unid = e.unid === "setor" ? "setor" : "hex";
   st.modo = e.modo === "rede" && st.cfg.tem_rede ? "rede" : "reta";

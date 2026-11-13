@@ -88,8 +88,11 @@ body { font-family: var(--sans); color: var(--texto); background: var(--fundo); 
 .menu-conta small { display: block; font-size: 12px; font-weight: 400; color: var(--texto-2); margin-top: 2px; }
 
 /* ---------------------------------------------------------------- corpo */
-.corpo { display: grid; grid-template-columns: 384px 1fr; height: calc(100% - var(--topo)); }
-.lateral { background: var(--fundo); border-right: 1px solid var(--borda); overflow-y: auto; padding: 16px;
+/* minmax(0, 1fr) + min-height: 0: a linha da grade não cresce com o conteúdo da lateral.
+   Sem isso a lateral empurra a página além da tela e, ao rolar até o fim, o mapa some. */
+.corpo { display: grid; grid-template-columns: 384px 1fr; grid-template-rows: minmax(0, 1fr);
+  height: calc(100% - var(--topo)); overflow: hidden; }
+.lateral { min-height: 0; background: var(--fundo); border-right: 1px solid var(--borda); overflow-y: auto; padding: 16px;
   display: flex; flex-direction: column; gap: 12px; scrollbar-gutter: stable; }
 
 /* faixa de boas-vindas com as curvas de nível da marca */
@@ -307,7 +310,7 @@ dialog::backdrop { background: rgba(13, 20, 80, .45); }
   .topo { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 10px; }
   .seletor { order: 3; flex: 1 1 100%; }
   .seletor select { flex: 1; min-width: 0; }
-  .corpo { display: flex; flex-direction: column; height: auto; }
+  .corpo { display: flex; flex-direction: column; height: auto; overflow: visible; }
   .mapa-wrap { order: -1; height: 64vh; min-height: 380px; }
   .lateral { border-right: 0; overflow: visible; padding: 12px 16px 32px; }
   .kpis { left: 10px; top: 10px; width: calc(100% - 64px); gap: 8px; }

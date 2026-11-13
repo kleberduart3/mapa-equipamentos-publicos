@@ -48,6 +48,18 @@
 
   <main class="corpo">
     <aside class="lateral" aria-label="Controles do mapa">
+      <!-- O mapa abre só com os equipamentos; raios e áreas sugeridas ficam desligados até a pessoa ligar. -->
+      <details class="passo dobra" id="sec-camadas" open>
+        <summary class="passo-topo"><span class="passo-n ico-camadas" aria-hidden="true"></span><div>
+          <h2>Camadas do mapa</h2>
+          <p class="passo-ajuda">Ligue e desligue o que aparece no mapa.</p></div></summary>
+        <div id="camadas"></div>
+        <div class="separador"></div>
+        <label class="toggle"><input type="checkbox" id="tg-raios"><span class="trilho"></span><span>Raios de atendimento</span></label>
+        <label class="toggle"><input type="checkbox" id="tg-radar"><span class="trilho"></span><span>Áreas prioritárias sugeridas</span></label>
+        <label class="toggle"><input type="checkbox" id="tg-estaduais"><span class="trilho"></span><span>Escolas estaduais de ensino médio (contexto)</span></label>
+      </details>
+
       <div class="guia">
         <p class="eyebrow">Como usar</p>
         <p>Siga os passos de cima para baixo. O mapa e os números mudam a cada ajuste.</p>
@@ -99,17 +111,6 @@
         <div class="sim-resultado" id="sim-resultado" aria-live="polite" hidden></div>
         <button type="button" class="btn sec btn-peq" id="btn-sim-limpar" hidden>Limpar simulação</button>
       </section>
-
-      <details class="passo dobra" id="sec-camadas">
-        <summary class="passo-topo"><span class="passo-n ico-camadas" aria-hidden="true"></span><div>
-          <h2>Camadas do mapa</h2>
-          <p class="passo-ajuda">Ligue e desligue o que aparece no mapa.</p></div></summary>
-        <div id="camadas"></div>
-        <div class="separador"></div>
-        <label class="toggle"><input type="checkbox" id="tg-raios" checked><span class="trilho"></span><span>Raios de atendimento</span></label>
-        <label class="toggle"><input type="checkbox" id="tg-radar" checked><span class="trilho"></span><span>Áreas prioritárias sugeridas</span></label>
-        <label class="toggle"><input type="checkbox" id="tg-estaduais"><span class="trilho"></span><span>Escolas estaduais de ensino médio (contexto)</span></label>
-      </details>
 
       <details class="passo dobra" id="sec-visoes" open>
         <summary class="passo-topo"><span class="passo-n ico-marcador" aria-hidden="true"></span><div>
