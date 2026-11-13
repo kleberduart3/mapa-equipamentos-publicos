@@ -26,6 +26,10 @@ const txtDist = () => (APE() ? "a pé pelas ruas" : "em linha reta");
 /* metros → minutos a pé (velocidade do parametros.yaml, padrão 80 m/min) */
 const minutos = (m) => Math.max(1, Math.round(m / (st.cfg?.velocidade_caminhada_m_min || 80)));
 const txtMin = (m) => `≈ ${minutos(m)} min a pé`;
+/* "até 6 min a pé": a distância aceitável dita em tempo (a conta continua em metros) */
+const ateMin = (m) => `até ${minutos(m)} min a pé`;
+const cercaDe = (m) => (m >= 1000 ? `cerca de ${fmt(m / 1000, m % 1000 ? 1 : 0)} km` : `cerca de ${fmt(m)} m`);
+const nomeTipo = (c) => c.rotulo.split(" (")[0].toLowerCase();
 
 const fmt = (n, c = 0) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: c, minimumFractionDigits: c });
 const $ = (s) => document.querySelector(s);
@@ -124,7 +128,7 @@ async function iniciar() {
   }
   if (ESTATICO) {
     $("#btn-pdf").textContent = "Baixar relatório PDF";
-    $("#btn-pdf").title = "Versão online: relatório pronto com os raios padrão, no modo de distância selecionado";
+    $("#btn-pdf").title = "Versão online: relatório pronto com as distâncias padrão, no modo de medir selecionado";
   }
   if (eu) ligarConta(eu);
   const munis = await api("/municipios");
@@ -332,7 +336,7 @@ function popupEquip(p, c) {
   }
   if (st.raio[p.tipo]) {
     const r = st.raio[p.tipo] * (p.rural ? st.cfg.fator_raio_rural : 1);
-    linhas.push(["Raio de atendimento", `${fmt(r)} m ${txtDist()} (${txtMin(r)})${p.rural ? " · zona rural" : ""}`]);
+    linhas.push(["Atende quem mora", `${ateMin(r)} (${cercaDe(r)}${APE() ? "" : " em linha reta"})${p.rural ? " · zona rural" : ""}`]);
   }
   const alerta = PRECISAS.has(p.fonte_coord) ? "" :
     `<div class="alerta">Localização ${p.fonte_coord === "sem_coordenada" ? "ausente" : "aproximada"} – confirmar com a prefeitura.</div>`;
@@ -380,8 +384,8 @@ function desenharRadares(t) {
     const html = `<div class="pop"><span class="tag" style="background:${c.cor}">Área prioritária ${p.ordem} · ${esc(c.rotulo)}</span>
       <h4>${esc(p.bairro || "Área sem bairro definido")}</h4>
       <dl><dt>Demanda que um novo equipamento absorveria</dt><dd>${fmt(p.demanda_absorvida)} ${c.unidade}</dd>
-      <dt>Sem nenhum equipamento no raio hoje</dt><dd>${fmt(p.sem_cobertura)} ${c.unidade}</dd>
-      <dt>Raio considerado</dt><dd>${fmt(st.raio[t])} m ${txtDist()}</dd></dl>
+      <dt>Hoje moram longe de qualquer unidade</dt><dd>${fmt(p.sem_cobertura)} ${c.unidade}</dd>
+      <dt>Distância considerada</dt><dd>${ateMin(st.raio[t])} (${cercaDe(st.raio[t])})</dd></dl>
       <div class="nota">Área de estudo (hexágono de ~0,1 km²), não endereço definitivo.</div></div>`;
     const m = new maplibregl.Marker({ element: el }).setLngLat(f.geometry.coordinates)
       .setPopup(new maplibregl.Popup({ offset: 14, maxWidth: "300px" }).setHTML(html)).addTo(st.map);
@@ -397,7 +401,7 @@ async function mudarMostrar(v) {
   st.map.setLayoutProperty("prioridade", "visibility", prio ? "visible" : "none");
   if (prio) {
     const modo = st.modo;
-    $("#nota-deficit").textContent = `Índice 0–100 que combina, para todos os tipos, gente fora do raio (2/3) e falta de capacidade (1/3). Calculado com os raios padrão, distância ${txtDist()}.`;
+    $("#nota-deficit").textContent = `Índice 0–100 que combina, para todos os tipos, gente morando longe (2/3) e falta de vagas ou equipes (1/3). Calculado com as distâncias padrão, ${txtDist()}.`;
     if (!st.prio[modo]) {
       $("#carregando").hidden = false;
       try { st.prio[modo] = await api(`/${st.cod}/prioridade?modo=${modo}`); } finally { $("#carregando").hidden = !(st.pendentes > 0); }
@@ -405,7 +409,7 @@ async function mudarMostrar(v) {
     if (st.mostrar === "prioridade" && modo === st.modo) fonte("prioridade", st.prio[modo]);
   } else {
     atualizarDeficit();
-    $("#nota-deficit").textContent = `${st.unid === "setor" ? "Setores censitários" : "Hexágonos"} em coral: ${st.cfg.tipos[v].unidade} sem ${st.cfg.tipos[v].rotulo.toLowerCase()} no raio ou onde a capacidade não dá conta. Quanto mais escuro, maior a demanda não resolvida. Clique numa área para ver os números.`;
+    $("#nota-deficit").textContent = `${st.unid === "setor" ? "Setores censitários" : "Hexágonos"} em coral: ${st.cfg.tipos[v].unidade} morando a mais de ${minutos(st.raio[v])} min a pé de uma ${nomeTipo(st.cfg.tipos[v])}, ou onde faltam vagas. Quanto mais escuro, maior a demanda não resolvida. Clique numa área para ver os números.`;
   }
   $("#unid-mapa").hidden = Boolean(ESTATICO) || prio;
   atualizarRanking();
@@ -455,9 +459,9 @@ function ligarCliquesMapa() {
     const p = e.features[0].properties, c = st.cfg.tipos[st.mostrar];
     const linhas = [];
     if (p.bairro) linhas.push(["Bairro", p.bairro]);
-    linhas.push([`${c.unidade[0].toUpperCase() + c.unidade.slice(1)} fora do raio`, fmt(p.pop_descoberta)]);
-    if (p.pct_fora != null) linhas.push(["Parcela da faixa fora do raio", `${fmt(p.pct_fora, 0)}%`]);
-    if (p.deficit_capacidade > 0.5) linhas.push(["Falta de capacidade (dentro do raio)", fmt(p.deficit_capacidade)]);
+    linhas.push([`${c.unidade[0].toUpperCase() + c.unidade.slice(1)} que moram longe (mais de ${minutos(st.raio[st.mostrar])} min a pé)`, fmt(p.pop_descoberta)]);
+    if (p.pct_fora != null) linhas.push(["Parcela que mora longe", `${fmt(p.pct_fora, 0)}%`]);
+    if (p.deficit_capacidade > 0.5) linhas.push(["Falta de vagas nas unidades próximas", fmt(p.deficit_capacidade)]);
     if (p.tempo_medio_min != null && p.tempo_medio_min !== "null")
       linhas.push([`Tempo médio a pé até a ${c.rotulo.split(" (")[0].toLowerCase()} mais próxima`, `${fmt(p.tempo_medio_min, 0)} min`]);
     const titulo = p._unid === "setor" ? `Setor censitário ${p.setor}` : "Área de ~0,1 km² (hexágono)";
@@ -476,7 +480,7 @@ async function atualizarRanking() {
   if (ESTATICO) return;
   const t = st.mostrar === "prioridade" ? null : st.mostrar;
   if (!t) {
-    $("#ranking-titulo").textContent = "Escolha um serviço no passo 01 para ver os bairros com mais gente fora do raio.";
+    $("#ranking-titulo").textContent = "Escolha um serviço no passo 01 para ver os bairros com mais gente morando longe.";
     $("#ranking").innerHTML = "";
     return;
   }
@@ -490,15 +494,15 @@ async function atualizarRanking() {
 function desenharRanking() {
   const r = st.ranking, c = st.cfg.tipos[r.tipo];
   const com = r.bairros.filter((b) => b.pop_fora >= 1);
-  $("#ranking-titulo").textContent = `${c.rotulo.split(" (")[0]} · raio ${fmt(r.raio_m)} m ${r.modo === "rede" ? "a pé" : "em linha reta"}`
-    + ` (${txtMin(r.raio_m)}). ${fmt(r.total_fora)} ${r.unidade} fora do raio no município.`;
+  $("#ranking-titulo").textContent = `${c.rotulo.split(" (")[0]} · longe = mais de ${minutos(r.raio_m)} min a pé`
+    + ` (${cercaDe(r.raio_m)}${r.modo === "rede" ? " pelas ruas" : " em linha reta"}). ${fmt(r.total_fora)} ${r.unidade} moram longe no município.`;
   const lista = st.rankingTodos ? com : com.slice(0, 8);
   $("#ranking").innerHTML = lista.map((b, i) => `
     <li><button type="button" class="ranking-item" data-i="${i}">
       <span class="ranking-nome">${esc(b.bairro)}</span>
       <span class="ranking-num">${fmt(b.pop_fora)}</span>
-      <span class="ranking-sub">${fmt(b.pct_fora, 0)}% da faixa fora do raio${b.tempo_medio_min != null ? ` · ${fmt(b.tempo_medio_min, 0)} min a pé, em média, até a mais próxima` : ""}</span>
-    </button></li>`).join("") || `<li class="nota">Ninguém fora do raio com esses parâmetros.</li>`;
+      <span class="ranking-sub">${fmt(b.pct_fora, 0)}% moram longe${b.tempo_medio_min != null ? ` · ${fmt(b.tempo_medio_min, 0)} min a pé, em média, até a mais próxima` : ""}</span>
+    </button></li>`).join("") || `<li class="nota">Ninguém mora longe com essa distância.</li>`;
   $("#ranking").querySelectorAll(".ranking-item").forEach((el) => (el.onclick = () => {
     const bb = lista[Number(el.dataset.i)].bbox;
     st.map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: 60, maxZoom: 15 });
@@ -511,7 +515,7 @@ function desenharRanking() {
 function baixarRankingCsv() {
   const r = st.ranking;
   if (!r) return;
-  const cab = ["bairro", `${r.unidade}_na_faixa`, `${r.unidade}_fora_do_raio`, "pct_fora_do_raio",
+  const cab = ["bairro", `${r.unidade}_na_faixa`, `${r.unidade}_moram_longe`, "pct_mora_longe",
     "falta_de_capacidade", "demanda_nao_resolvida", "tempo_medio_a_pe_min", "zona_rural"];
   const q = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const linhas = r.bairros.map((b) => [b.bairro, b.pop_faixa, b.pop_fora, String(b.pct_fora).replace(".", ","),
@@ -579,14 +583,14 @@ async function simular(lngLat) {
   const nome = c.rotulo.split(" (")[0].toLowerCase();
   caixa.innerHTML = `
     <div class="sim-num">${fmt(r.novos_atendidos)}</div>
-    <p>${esc(c.unidade)} que hoje não têm ${esc(nome)} no raio passariam a ter uma a até ${fmt(r.raio_efetivo_m)} m
-      ${modo === "rede" ? "a pé" : "em linha reta"} (${txtMin(r.raio_efetivo_m)}).</p>
+    <p>${esc(c.unidade)} que hoje moram longe de uma ${esc(nome)} passariam a ter uma ${ateMin(r.raio_efetivo_m)}
+      (${cercaDe(r.raio_efetivo_m)}${modo === "rede" ? " pelas ruas" : " em linha reta"}).</p>
     <dl>
       <dt>Local</dt><dd>${esc(r.bairro || (r.rural ? "Zona rural" : "Área sem bairro definido"))}</dd>
-      <dt>${esc(c.unidade[0].toUpperCase() + c.unidade.slice(1))} da faixa no raio</dt><dd>${fmt(r.pop_no_raio)}</dd>
+      <dt>${esc(c.unidade[0].toUpperCase() + c.unidade.slice(1))} da faixa ${ateMin(r.raio_efetivo_m)} do local</dt><dd>${fmt(r.pop_no_raio)}</dd>
       <dt>Cobertura do município</dt><dd>${fmt(r.pct_coberta_antes, 1)}% → ${fmt(r.pct_coberta_depois, 1)}%</dd>
       <dt>${t === "ubs" ? "Pessoas a atender" : "Vagas pela meta"} sem atendimento hoje</dt><dd>${fmt(r.demanda_sem_cobertura_absorvida)}</dd>
-      <dt>Somando a falta de capacidade no raio</dt><dd>${fmt(r.demanda_total_absorvivel)}</dd>
+      <dt>Somando a falta de vagas nas unidades próximas</dt><dd>${fmt(r.demanda_total_absorvivel)}</dd>
     </dl>
     <p class="nota">Supõe uma unidade dimensionada para essa demanda. Arraste o marcador para comparar terrenos.</p>`;
 }
@@ -637,15 +641,15 @@ function montarLateral() {
 
   $("#raios").innerHTML = Object.entries(tipos).map(([t, c]) => `
     <div class="raio" style="--cor:${c.cor}">
-      <div class="raio-topo"><span>${esc(c.rotulo.split(" (")[0])}</span><b id="rv-${t}">${fmt(st.raio[t])} m</b></div>
-      <div class="raio-min" id="rm-${t}">${txtMin(st.raio[t])}</div>
-      <input type="range" min="${ESTATICO?.raio_min ?? 200}" max="${ESTATICO?.raio_max ?? 3000}" step="${ESTATICO?.passo ?? 50}" value="${st.raio[t]}" data-tipo="${t}" aria-label="Raio – ${esc(c.rotulo)}">
+      <div class="raio-topo"><span>${esc(c.rotulo.split(" (")[0])}</span><b id="rv-${t}">até ${minutos(st.raio[t])} min</b></div>
+      <div class="raio-min" id="rm-${t}">a pé · ${cercaDe(st.raio[t])}</div>
+      <input type="range" min="${ESTATICO?.raio_min ?? 200}" max="${ESTATICO?.raio_max ?? 3000}" step="${ESTATICO?.passo ?? 50}" value="${st.raio[t]}" data-tipo="${t}" aria-label="Distância aceitável a pé – ${esc(c.rotulo)}">
     </div>`).join("");
   $("#raios").querySelectorAll("input").forEach((i) => i.addEventListener("input", () => {
     const t = i.dataset.tipo;
     st.raio[t] = Number(i.value);
-    $(`#rv-${t}`).textContent = `${fmt(st.raio[t])} m`;
-    $(`#rm-${t}`).textContent = txtMin(st.raio[t]);
+    $(`#rv-${t}`).textContent = `até ${minutos(st.raio[t])} min`;
+    $(`#rm-${t}`).textContent = `a pé · ${cercaDe(st.raio[t])}`;
     desenharRaios(t);
     atualizarCobertura(t, 350);
   }));
@@ -661,9 +665,9 @@ function montarLateral() {
 
 function notaModo() {
   $("#nota-rural").textContent = (APE()
-    ? "Distância percorrida a pé pelas ruas e caminhos do OpenStreetMap. As manchas mostram até onde se chega dentro do raio. "
-    : "Distância em linha reta a partir do equipamento. ")
-    + `Na zona rural o raio é multiplicado por ${fmt(st.cfg.fator_raio_rural, 1)}.`
+    ? "Tempo a pé pelas ruas e caminhos do OpenStreetMap, a passo normal. As manchas mostram até onde se chega nesse tempo. "
+    : "Distância em linha reta a partir da unidade, convertida em minutos a passo normal (o caminho real é mais longo). ")
+    + `Na zona rural vale ${st.cfg.fator_raio_rural === 3 ? "o triplo" : `${fmt(st.cfg.fator_raio_rural, 1)} vezes`}.`
     + (st.cfg.tem_rede ? "" : " Malha viária ainda não preparada para este município.");
 }
 
@@ -693,10 +697,10 @@ function atualizarKpis() {
   }).join("");
   $("#kpis").innerHTML = `
     <div class="kpi"><div class="rot">População</div><div class="val">${pop ? fmt(pop) : "…"}</div><div class="sub">Censo 2022</div></div>
-    <div class="kpi"><div class="rot">Sem ${esc(tipos[t].rotulo.split(" (")[0].toLowerCase())} no raio</div>
-      <div class="val">${it ? fmt(it.pop_descoberta) : "…"}</div><div class="sub">${tipos[t].unidade} · raio ${fmt(st.raio[t])} m ${APE() ? "a pé" : ""}</div>
+    <div class="kpi"><div class="rot">Moram longe de uma ${esc(nomeTipo(tipos[t]))}</div>
+      <div class="val">${it ? fmt(it.pop_descoberta) : "…"}</div><div class="sub">${tipos[t].unidade} a mais de ${minutos(st.raio[t])} min a pé</div>
       ${st.cob[t]?.acesso?.tempo_medio_min != null ? `<div class="sub">Tempo médio a pé até a mais próxima: <b>${fmt(st.cob[t].acesso.tempo_medio_min, 0)} min</b></div>` : ""}</div>
-    <div class="kpi cobertura"><div class="rot">Quem está dentro do raio · ${txtDist()}</div>${barras}
+    <div class="kpi cobertura"><div class="rot">Quem mora perto da unidade · ${txtDist()}</div>${barras}
       <div class="sub kpi-rodape"><span class="ponto-coral"></span>${nRadar} áreas prioritárias sugeridas no mapa</div></div>`;
 }
 
@@ -705,13 +709,13 @@ function atualizarLegenda() {
     <div class="leg-item"><span class="leg-icos">${svgIcone(c.cor, c.icone)}
       <svg class="leg-radar" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="${c.cor}" fill-opacity=".1" stroke="${c.cor}" stroke-width="1.4"/>
         <circle cx="11" cy="11" r="6.6" fill="none" stroke="${c.cor}" stroke-opacity=".5"/><circle cx="11" cy="11" r="3.3" fill="none" stroke="${c.cor}" stroke-opacity=".3"/></svg></span>
-      <span class="leg-txt">${esc(nomeCurto(c))}<small><b>${fmt(st.raio[t])} m</b> · ${minutos(st.raio[t])} min a pé</small></span></div>`).join("");
-  $("#legenda").innerHTML = `<h3>Equipamentos e raios ${APE() ? "(a pé)" : ""}</h3>${itens}
+      <span class="leg-txt">${esc(nomeCurto(c))}<small><b>${ateMin(st.raio[t])}</b> · ${cercaDe(st.raio[t])}</small></span></div>`).join("");
+  $("#legenda").innerHTML = `<h3>Equipamentos e alcance ${APE() ? "(a pé)" : ""}</h3>${itens}
     <div class="leg-sep"></div>
     <div class="leg-item"><span class="radar" style="--cor:#FF6B57;width:18px;height:18px"><span class="nucleo"></span></span><span>Área prioritária sugerida</span></div>
     <div class="leg-item"><span class="leg-hex"></span><span>Demanda não resolvida</span></div>
     <div class="leg-item"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#C93A27" stroke-width="1.6" stroke-dasharray="3 2.2"/></svg><span>Localização a confirmar</span></div>
-    <div class="nota">${APE() ? "Mancha: alcance a pé pelas ruas. " : ""}Zona rural: raio × ${fmt(st.cfg.fator_raio_rural, 1)}</div>`;
+    <div class="nota">${APE() ? "Mancha: alcance a pé pelas ruas. " : ""}Zona rural: distância × ${fmt(st.cfg.fator_raio_rural, 1)}</div>`;
 }
 
 /* ---------- Visões salvas ---------- */
@@ -798,7 +802,7 @@ function desenharVisoes() {
           ? ` · atualizada em ${data(v.atualizada_em)}${v.atualizada_por && v.atualizada_por !== v.autor ? ` por ${esc(v.atualizada_por)}` : ""}` : ""}</span>
       </button>
       <span class="visao-acoes">
-        <button type="button" class="lnk" data-relatorio="${i}" title="Gerar o relatório PDF com os raios e o modo de distância desta visão">Relatório</button>
+        <button type="button" class="lnk" data-relatorio="${i}" title="Gerar o relatório PDF com as distâncias e o modo de medir desta visão">Relatório</button>
         ${v.pode_editar ? `<button type="button" class="lnk" data-atualizar="${i}" title="Guardar nesta visão o que está na tela agora">Atualizar</button>` : ""}
         <button type="button" class="lnk" data-link="${i}" title="Copiar o link desta visão">Link</button>
         ${v.pode_apagar ? `<button type="button" class="lnk perigo" data-apagar="${i}" title="Apagar esta visão">Apagar</button>` : ""}
@@ -811,7 +815,7 @@ function desenharVisoes() {
   }));
   $("#visoes").querySelectorAll("[data-atualizar]").forEach((b) => (b.onclick = async () => {
     const v = lista[b.dataset.atualizar];
-    if (!confirm(`Substituir a visão “${v.nome}” pelo que está na tela agora (serviço, raios, modo de distância, camadas e enquadramento)?`)) return;
+    if (!confirm(`Substituir a visão “${v.nome}” pelo que está na tela agora (serviço, distâncias, modo de medir, camadas e enquadramento)?`)) return;
     b.disabled = true;
     const r = await requisitar(`/api/${st.cod}/visoes/${v.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: capturarEstado() }),
@@ -872,7 +876,7 @@ function ligarPdf() {
     if (ESTATICO) {
       if (!ESTATICO.pdf?.[st.modo]) { alert("Esta cópia do mapa não inclui o relatório PDF."); return; }
       const padrao = Object.entries(st.cfg.tipos).every(([t, c]) => st.raio[t] === c.raio_m);
-      if (!padrao && !confirm("A versão online tem o relatório pronto só com os raios padrão. Baixar mesmo assim?")) return;
+      if (!padrao && !confirm("A versão online tem o relatório pronto só com as distâncias padrão. Baixar mesmo assim?")) return;
       const a = Object.assign(document.createElement("a"), { href: ESTATICO.pdf[st.modo], download: "" });
       document.body.appendChild(a); a.click(); a.remove();
       return;

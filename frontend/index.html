@@ -34,7 +34,7 @@
           <button type="button" role="menuitem" data-formato="a3">PDF A3 deitado <small>para mural ou reunião</small></button>
         </div>
       </div>
-      <button id="btn-pdf" class="btn ico ico-relatorio" title="Relatório completo com os raios atuais do mapa">Relatório PDF</button>
+      <button id="btn-pdf" class="btn ico ico-relatorio" title="Relatório completo com as distâncias escolhidas no mapa">Relatório PDF</button>
       <div class="conta" id="conta" hidden>
         <button id="btn-conta" class="btn fantasma ico ico-pessoa" aria-haspopup="menu" aria-expanded="false"></button>
         <div class="menu-conta" id="menu-conta" role="menu" hidden>
@@ -55,7 +55,7 @@
           <p class="passo-ajuda">Ligue e desligue o que aparece no mapa.</p></div></summary>
         <div id="camadas"></div>
         <div class="separador"></div>
-        <label class="toggle"><input type="checkbox" id="tg-raios"><span class="trilho"></span><span>Raios de atendimento</span></label>
+        <label class="toggle"><input type="checkbox" id="tg-raios"><span class="trilho"></span><span>Alcance de cada unidade</span></label>
         <label class="toggle"><input type="checkbox" id="tg-radar"><span class="trilho"></span><span>Áreas prioritárias sugeridas</span></label>
         <label class="toggle"><input type="checkbox" id="tg-estaduais"><span class="trilho"></span><span>Escolas estaduais de ensino médio (contexto)</span></label>
       </details>
@@ -79,8 +79,8 @@
 
       <section class="passo">
         <header class="passo-topo"><span class="passo-n">02</span><div>
-          <h2>Até onde cada unidade atende</h2>
-          <p class="passo-ajuda">Defina como medir a distância e o raio de cada serviço.</p></div></header>
+          <h2>Quanto é razoável andar até a unidade?</h2>
+          <p class="passo-ajuda">Escolha até quantos minutos a pé cada serviço pode ficar de casa.</p></div></header>
         <div class="segmentado" id="modo-dist" role="radiogroup" aria-label="Como medir a distância">
           <label><input type="radio" name="modo" value="reta"><span>Linha reta</span></label>
           <label><input type="radio" name="modo" value="rede"><span>A pé pelas ruas</span></label>
@@ -92,7 +92,7 @@
       <section class="passo" id="sec-ranking">
         <header class="passo-topo"><span class="passo-n">03</span><div>
           <h2>Onde falta mais</h2>
-          <p class="passo-ajuda">Bairros com mais gente fora do raio. Clique num bairro para ir até ele.</p></div></header>
+          <p class="passo-ajuda">Bairros com mais gente morando longe. Clique num bairro para ir até ele.</p></div></header>
         <p class="nota destaque" id="ranking-titulo"></p>
         <ol class="ranking" id="ranking"></ol>
         <div class="acoes-ranking">
@@ -160,7 +160,7 @@
   <dialog id="dlg-visao">
     <form class="dlg" id="form-visao">
       <h2>Salvar esta visão</h2>
-      <p class="nota">Guarda o que está na tela: o que o mapa mostra, os raios, o modo de distância, as camadas,
+      <p class="nota">Guarda o que está na tela: o que o mapa mostra, as distâncias, o modo de medir, as camadas,
         o enquadramento e a unidade simulada.</p>
       <label class="campo-rot">Nome<input type="text" id="visao-nome" maxlength="80" required
         placeholder="Ex.: Creches – bairros do norte, 800 m a pé"></label>

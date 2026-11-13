@@ -164,6 +164,10 @@ class CabecalhosSeguranca(BaseHTTPMiddleware):
         h.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         if request.url.path.startswith(("/api/", "/auth/")):
             h.setdefault("Cache-Control", "no-store")             # dados por usuário: nada em cache compartilhado
+        elif request.url.path.startswith(("/css/", "/js/")):
+            # o navegador sempre confere se há versão nova (304 quando não mudou): sem isso,
+            # depois de uma atualização a pessoa podia ficar com o CSS/JS antigo em cache
+            h.setdefault("Cache-Control", "no-cache")
         if cfg().cookie_seguro:
             h.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         return r

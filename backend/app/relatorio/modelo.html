@@ -62,24 +62,24 @@
     <div class="kpi"><div class="r">População</div><div class="v">{{ pop|n }}</div></div>
     <div class="kpi"><div class="r">Setores censitários</div><div class="v">{{ n_setores|n }}</div></div>
     {% for t in tipos if t.t in ('creche', 'ubs') %}
-    <div class="kpi"><div class="r">Sem {{ t.rotulo.split(' (')[0].lower() }} no raio</div><div class="v">{{ t.pop_desc|n }}</div></div>
+    <div class="kpi"><div class="r">Moram longe de {{ 'uma UBS' if t.t == 'ubs' else 'uma ' ~ t.rotulo.split(' (')[0].lower() }} (mais de {{ t.cfg.raio_m|min }} min a pé)</div><div class="v">{{ t.pop_desc|n }}</div></div>
     {% endfor %}
   </div>
 
   {% if not comp %}
-  <h3>Parcela da população atendida pelo raio de cada equipamento</h3>
+  <h3>Parcela da população que mora perto de uma unidade</h3>
   <div class="barras">
     {% for t in tipos %}
-    <div class="barra"><span><span class="ponto" style="background:{{ t.cor }}"></span>{{ t.rotulo.split(' (')[0].replace('Unidade Básica de Saúde', 'UBS') }} · {{ t.cfg.raio_m|n }} m</span>
+    <div class="barra"><span><span class="ponto" style="background:{{ t.cor }}"></span>{{ t.rotulo.split(' (')[0].replace('Unidade Básica de Saúde', 'UBS') }} · até {{ t.cfg.raio_m|min }} min a pé</span>
       <span class="t"><span class="c" style="display:block;width:{{ t.pct }}%;background:{{ t.cor }}"></span></span><b>{{ t.pct|n }}%</b></div>
     {% endfor %}
   </div>
   {% else %}
-  <h3>Parcela da população atendida pelo raio de cada equipamento: linha reta × a pé pelas ruas</h3>
+  <h3>Parcela da população que mora perto de uma unidade: linha reta × a pé pelas ruas</h3>
   <table class="comp">
-    <tr><th>Equipamento</th><th class="n">Raio</th><th class="n">Linha reta</th><th class="n">A pé</th><th class="n">Rural: reta → a pé</th><th class="n">Fora do alcance a pé</th></tr>
+    <tr><th>Equipamento</th><th class="n">Perto =</th><th class="n">Linha reta</th><th class="n">A pé</th><th class="n">Rural: reta → a pé</th><th class="n">Moram longe (a pé)</th></tr>
     {% for c in comp %}
-    <tr><td><span class="ponto" style="background:{{ c.cor }}"></span>{{ c.rotulo }}</td><td class="n">{{ c.raio|n }} m</td>
+    <tr><td><span class="ponto" style="background:{{ c.cor }}"></span>{{ c.rotulo }}</td><td class="n">até {{ c.raio|min }} min ({{ c.raio|n }} m)</td>
       <td class="n">{% if modo != 'rede' %}<b>{{ c.reta|n }}%</b>{% else %}{{ c.reta|n }}%{% endif %}</td><td class="n">{% if modo == 'rede' %}<b>{{ c.rede|n }}%</b>{% else %}{{ c.rede|n }}%{% endif %}</td><td class="n">{{ c.reta_rur|n }}% → {{ c.rede_rur|n }}%</td>
       <td class="n">{{ c.rede_desc|n }}</td></tr>
     {% endfor %}
@@ -100,43 +100,43 @@
 <section class="pagina" style="--cor: {{ t.cor }}">
   <div class="faixa-tipo">
     <h2>{{ t.rotulo }}</h2>
-    <div class="sub">Raio de atendimento {{ t.cfg.raio_m|n }} m {{ 'a pé' if modo == 'rede' else 'em linha reta' }} (≈ {{ t.raio_min }} min a pé; zona rural: {{ (t.cfg.raio_m * fr)|n }} m) ·
+    <div class="sub">Mora perto quem está a até {{ t.cfg.raio_m|min }} min a pé (cerca de {{ t.cfg.raio_m|n }} m {{ 'pelas ruas' if modo == 'rede' else 'em linha reta' }}; na zona rural, até {{ (t.cfg.raio_m * fr)|min }} min) ·
       meta de atendimento {{ (100 * t.cfg.taxa_atendimento_meta)|n }}% · redes: {{ t.redes }}</div>
   </div>
 
   <div class="kpis">
     <div class="kpi"><div class="r">População da faixa</div><div class="v">{{ t.pop_faixa|n }}</div></div>
     <div class="kpi"><div class="r">Coberta (urbana / rural)</div><div class="v">{{ t.pct_urb|n }}% / {{ t.pct_rur|n }}%</div></div>
-    <div class="kpi"><div class="r">Fora de qualquer raio</div><div class="v">{{ t.pop_desc|n }}</div></div>
-    <div class="kpi"><div class="r">Falta de capacidade no raio</div><div class="v">{{ t.def_cap|n }}</div></div>
+    <div class="kpi"><div class="r">Moram longe de qualquer unidade</div><div class="v">{{ t.pop_desc|n }}</div></div>
+    <div class="kpi"><div class="r">Falta de vagas nas unidades próximas</div><div class="v">{{ t.def_cap|n }}</div></div>
   </div>
   {% if t.tempo_medio is not none %}<p class="nota">Tempo médio {{ 'a pé pelas ruas' if modo == 'rede' else 'a pé (pela distância em linha reta)' }} de cada morador da faixa até a unidade mais próxima: <b>{{ t.tempo_medio|n(1) }} min</b>.</p>{% endif %}
 
   <img class="mapa" src="{{ t.mapa }}" alt="Mapa de cobertura – {{ t.rotulo }}">
   <p class="legenda">Pontos: {{ t.n_fac }} equipamentos (contorno coral = localização a confirmar). {% if modo == 'rede' %}Manchas: área alcançável
-    a pé pelas ruas dentro do raio, na cor do tipo.{% else %}Círculos: raio de
-    atendimento na cor do tipo.{% endif %} Coral: demanda não resolvida (fora do raio ou sem capacidade). Radar numerado: áreas
+    a pé pelas ruas nesse tempo, na cor do tipo.{% else %}Círculos: distância de
+    atendimento na cor do tipo.{% endif %} Coral: demanda não resolvida (mora longe ou faltam vagas). Radar numerado: áreas
     sugeridas para novos equipamentos, em ordem.</p>
 
   {% if t.sug %}
   <h3>Áreas sugeridas para novo equipamento</h3>
   <table>
-    <tr><th class="n">Ordem</th><th>Bairro / localidade</th><th class="n">Demanda que absorveria</th><th class="n">Hoje sem nenhum equipamento no raio</th></tr>
+    <tr><th class="n">Ordem</th><th>Bairro / localidade</th><th class="n">Demanda que absorveria</th><th class="n">Hoje moram longe de qualquer unidade</th></tr>
     {% for s in t.sug %}
     <tr><td class="n">{{ s.ordem }}</td><td>{{ s.bairro }}</td><td class="n">{{ s.demanda_absorvida|n }} {{ t.unidade }}</td>
       <td class="n">{{ s.demanda_sem_cobertura_absorvida|n }}</td></tr>
     {% endfor %}
   </table>
-  <p class="nota">Cada área é um hexágono de ~0,1 km² escolhido em sequência: é o que alcança, com o raio do tipo, a maior demanda
+  <p class="nota">Cada área é um hexágono de ~0,1 km² escolhido em sequência: é o que alcança, com a distância do tipo, a maior demanda
     ainda não resolvida. Indica onde estudar terrenos, não um endereço definitivo.</p>
   {% else %}
   <p class="nota">Nenhuma área atinge a demanda mínima configurada para sugerir um novo equipamento.</p>
   {% endif %}
 
   {% if t.ranking %}
-  <h3>Bairros com mais {{ t.unidade }} fora do raio</h3>
+  <h3>Bairros com mais {{ t.unidade }} morando longe</h3>
   <table class="comp">
-    <tr><th>Bairro</th><th class="n">Na faixa</th><th class="n">Fora do raio</th><th class="n">%</th><th class="n">Tempo médio até a mais próxima</th></tr>
+    <tr><th>Bairro</th><th class="n">Na faixa</th><th class="n">Moram longe</th><th class="n">%</th><th class="n">Tempo médio até a mais próxima</th></tr>
     {% for b in t.ranking %}
     <tr><td>{{ b.bairro }}</td><td class="n">{{ b.pop_faixa|n }}</td><td class="n">{{ b.pop_fora|n }}</td><td class="n">{{ b.pct_fora|n }}%</td>
       <td class="n">{{ b.tempo_medio_min|n }} min</td></tr>
@@ -159,30 +159,30 @@
     foram estimadas a partir das faixas quinquenais dos setores e da distribuição por idade simples do município (SIDRA 9514).
     A população de cada setor foi repartida entre os endereços residenciais do CNEFE 2022, para localizar onde as pessoas moram.</p>
   {% if modo == 'rede' %}
-  <p><b>Cobertura.</b> Um morador está coberto quando chega a pé a um equipamento do tipo percorrendo, no máximo, a distância do
-    raio de atendimento pelas ruas e caminhos de pedestres do OpenStreetMap ({{ rede_km|n }} km de vias no município e entorno de 2 km).
+  <p><b>Cobertura.</b> Um morador está coberto quando chega a pé a um equipamento do tipo percorrendo, no máximo, a distância de
+    atendimento do tipo (o “raio” do planejamento urbano, aqui convertido em minutos a passo normal) pelas ruas e caminhos de pedestres do OpenStreetMap ({{ rede_km|n }} km de vias no município e entorno de 2 km).
     Cada endereço e cada equipamento é ligado à via mais próxima; o caminho mais curto é calculado pelo algoritmo de Dijkstra.
-    Na zona rural o raio é multiplicado por {{ fr|n(1) }}.</p>
+    Na zona rural a distância aceita é multiplicada por {{ fr|n(1) }}.</p>
   {% else %}
-  <p><b>Cobertura.</b> Um morador está coberto quando há equipamento do tipo dentro do raio de atendimento, em linha reta. Na zona
-    rural o raio é multiplicado por {{ fr|n(1) }}.{% if comp %} A tabela da primeira página mostra o mesmo cálculo a pé pelas ruas.{% endif %}</p>
+  <p><b>Cobertura.</b> Um morador está coberto quando há equipamento do tipo dentro da distância de atendimento (o “raio” do planejamento urbano), em linha reta. Na zona
+    rural a distância aceita é multiplicada por {{ fr|n(1) }}.{% if comp %} A tabela da primeira página mostra o mesmo cálculo a pé pelas ruas.{% endif %}</p>
   {% endif %}
   <p><b>Capacidade.</b> Método de área de influência flutuante em dois passos (2SFCA): a capacidade de cada equipamento é dividida
-    pela demanda dentro do seu raio, e cada morador recebe a soma das parcelas dos equipamentos que o alcançam. A demanda-meta é a
-    população da faixa vezes a meta de atendimento. “Falta de capacidade” é a demanda dentro de algum raio que a capacidade instalada
-    não alcança; não se soma à demanda fora de qualquer raio.</p>
+    pela demanda que mora perto dele, e cada morador recebe a soma das parcelas dos equipamentos que o alcançam. A demanda-meta é a
+    população da faixa vezes a meta de atendimento. “Falta de vagas” é a demanda de quem mora perto de alguma unidade mas que a capacidade instalada
+    não alcança; não se soma à de quem mora longe de todas.</p>
 
   <table>
-    <tr><th>Equipamento</th><th class="n">Raio</th><th>Faixa</th><th class="n">Meta</th><th>Capacidade</th><th>Redes</th>
-      <th class="n">0,5× raio</th><th class="n">raio</th><th class="n">1,5× raio</th></tr>
+    <tr><th>Equipamento</th><th class="n">Perto =</th><th>Faixa</th><th class="n">Meta</th><th>Capacidade</th><th>Redes</th>
+      <th class="n">Metade da distância</th><th class="n">Distância adotada</th><th class="n">1,5× a distância</th></tr>
     {% for t in tipos %}
-    <tr><td>{{ t.rotulo.split(' (')[0] }}</td><td class="n">{{ t.cfg.raio_m|n }} m</td><td>{{ t.cfg.faixa_demanda.replace('pop_', '').replace('_', '–').replace('total', 'todos') }}</td>
+    <tr><td>{{ t.rotulo.split(' (')[0] }}</td><td class="n">até {{ t.cfg.raio_m|min }} min ({{ t.cfg.raio_m|n }} m)</td><td>{{ t.cfg.faixa_demanda.replace('pop_', '').replace('_', '–').replace('total', 'todos') }}</td>
       <td class="n">{{ (100 * t.cfg.taxa_atendimento_meta)|n }}%</td><td>{{ t.capacidade_txt }}</td><td>{{ t.redes }}</td>
       <td class="n">{{ t.sens['0.5']|n }}%</td><td class="n">{{ t.sens['1']|n }}%</td><td class="n">{{ t.sens['1.5']|n }}%</td></tr>
     {% endfor %}
   </table>
-  <p class="nota">As três últimas colunas mostram a população coberta com metade, o mesmo e 1,5 vez o raio — a sensibilidade do
-    resultado ao parâmetro. Os raios e metas são padrões iniciais de planejamento, a validar com a legislação e o plano diretor do município.</p>
+  <p class="nota">As três últimas colunas mostram a população coberta com metade, a mesma e 1,5 vez a distância — a sensibilidade do
+    resultado a essa escolha. As distâncias e metas são padrões iniciais de planejamento, a validar com a legislação e o plano diretor do município.</p>
 
   <h3>Limitações</h3>
   <ul class="achados">

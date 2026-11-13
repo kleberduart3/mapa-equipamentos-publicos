@@ -223,7 +223,8 @@ def achados(an: dict, mat: dict) -> list[str]:
     L = []
     pior = min(tp.values(), key=lambda d: d["pct"])
     L.append(f"<b>{pior['rotulo']}</b> é o equipamento com menor cobertura: só {fmt(pior['pct'])}% das "
-             f"{pior['unidade']} da faixa moram a até {fmt(pior['cfg']['raio_m'])} m{ape} de um equipamento.")
+             f"{pior['unidade']} da faixa moram a até {pior['raio_min']} min a pé"
+             f" (cerca de {fmt(pior['cfg']['raio_m'])} m{ape}) de uma unidade.")
     if "creche" in tp and mat.get("creche"):
         r = mat["creche"]["total"] / max(tp["creche"]["dem"], 1)
         if r < 1:
@@ -233,7 +234,7 @@ def achados(an: dict, mat: dict) -> list[str]:
     for d in tp.values():
         if d["pct_rur"] + 10 < d["pct_urb"]:
             L.append(f"Na zona rural a cobertura de <b>{d['rotulo'].split(' (')[0]}</b> cai para {fmt(d['pct_rur'])}% "
-                     f"(urbana: {fmt(d['pct_urb'])}%), mesmo com raio ampliado.")
+                     f"(urbana: {fmt(d['pct_urb'])}%), mesmo aceitando distâncias maiores no campo.")
     bairros = pd.concat([d["sug"][["bairro"]].assign(t=d["rotulo"]) for d in tp.values() if len(d["sug"])])
     if len(bairros):
         top = bairros.groupby("bairro")["t"].nunique().sort_values(ascending=False)
@@ -324,13 +325,15 @@ def montar_html(b: Base, raios: dict[str, int] | None = None, modo: str = "reta"
                                          if t == "ubs" else "matrículas (Censo Escolar 2024)")})
     env = Environment(loader=FileSystemLoader(AQUI), autoescape=select_autoescape(["html"]))
     env.filters["n"] = fmt
+    vel = servicos.velocidade(b.m.cod)
+    env.filters["min"] = lambda m: max(1, round(float(m) / vel))      # metros → minutos a pé
     return env.get_template("modelo.html").render(
         logo=Markup(LOGO.read_text(encoding="utf-8")) if LOGO.exists() else "Equicidade",
         titulo_visao=titulo_visao,
         m=m, data=f"{hoje.day} de {MESES[hoje.month - 1]} de {hoje.year}", P=P, fr=b.fr,
         pop=int(b.setores["pop_total"].sum()), n_setores=len(b.setores), tipos=tipos,
         mapa_prioridade=mapa_prioridade(b, an), achados=achados(an, mat) + achado_rede(comp, modo), pendencias=pendencias(b),
-        pesos="2/3 população fora do raio e 1/3 falta de capacidade (sem cadastro do IPTU)",
+        pesos="2/3 população morando longe e 1/3 falta de vagas ou equipes (sem cadastro do IPTU)",
         modo=modo, comp=comp, rede_km=(b.medidor("rede").rede.km if b.tem_rede else None),
     )
 

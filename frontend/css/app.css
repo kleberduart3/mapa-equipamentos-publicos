@@ -167,7 +167,7 @@ body { font-family: var(--sans); color: var(--texto); background: var(--fundo); 
 .raio-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; }
 .raio-topo span { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .raio-topo span::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--cor); }
-.raio-topo b { font: 600 13px var(--mono); font-variant-numeric: tabular-nums; background: var(--primaria-clara); color: var(--texto);
+.raio-topo b { white-space: nowrap; flex: none; font: 600 13px var(--mono); font-variant-numeric: tabular-nums; background: var(--primaria-clara); color: var(--texto);
   border-radius: 8px; padding: 3px 8px; }
 .raio-min { font-size: 12px; color: var(--texto-2); margin: 2px 0 0 18px; }
 .raio input[type=range] { width: 100%; margin: 8px 0 2px; accent-color: var(--cor, var(--primaria)); cursor: pointer; }

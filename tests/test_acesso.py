@@ -254,3 +254,8 @@ def test_csp_segue_o_provedor(app, monkeypatch):
     csp = app.get("/entrar").headers["content-security-policy"]
     assert "img-src 'self' data: blob: https://tiles.exemplo.com" in csp
     assert "tile.openstreetmap.org" not in csp
+
+
+def test_css_e_js_sempre_conferem_versao_nova(app):
+    assert app.get("/css/app.css").headers["cache-control"] == "no-cache"
+    assert app.get("/js/app.js").headers["cache-control"] == "no-cache"
