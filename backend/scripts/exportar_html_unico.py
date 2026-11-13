@@ -67,6 +67,11 @@ def main() -> None:
                 if isinstance(c, dict) and int(c.get("raio_m", a.passo)) % a.passo]
     if faltando:
         sys.exit(f"raio padrão fora do passo {a.passo}: {faltando}")
+    for t in cfg["tipos"]:
+        for r in raios:
+            for chave in (f"cobertura/reta/{t}_{r}", f"cobertura/rede/{t}_{r}", f"areas/{t}_{r}"):
+                if not any(k.endswith(chave + ".json") for k in dados):
+                    sys.exit(f"falta {chave}: use um passo que exista em site/ (lá é {est['passo']} m)")
 
     est.update(passo=a.passo, raio_min=a.passo,
                pdf={k: SITE_ONLINE + v for k, v in est["pdf"].items()})
