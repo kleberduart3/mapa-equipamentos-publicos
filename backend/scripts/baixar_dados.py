@@ -19,6 +19,7 @@ import requests  # noqa: E402
 import truststore  # noqa: E402
 
 from backend.app.config import BRUTOS, RAIZ, Municipio, municipio_cli  # noqa: E402
+from backend.app.fontes import versao_atual  # noqa: E402
 
 # Usa o repositório de certificados do sistema: o servidor do INEP não envia a
 # cadeia intermediária completa e o Python puro recusa a conexão.
@@ -65,6 +66,7 @@ def baixar(url: str, destino: Path) -> None:
         return
     destino.parent.mkdir(parents=True, exist_ok=True)
     tmp = destino.with_suffix(destino.suffix + ".part")
+    url = versao_atual(url)          # arquivos do IBGE com data no nome são republicados com outra data
     print(f"  baixando {url}")
     with requests.get(url, stream=True, timeout=120) as r:
         r.raise_for_status()

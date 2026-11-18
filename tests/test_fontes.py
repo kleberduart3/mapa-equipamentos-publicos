@@ -30,6 +30,15 @@ def test_recorte_copia_linhas_byte_a_byte(tmp_path):
     assert n == 1 and saida.read_bytes() == linhas[0] + linhas[2]
 
 
+def test_versao_atual_acha_arquivo_republicado_com_outra_data():
+    from backend.app.fontes import versao_atual
+    pasta = "https://ftp.ibge.gov.br/Censos/X"
+    html = ('<a href="dicionario_setores_20250101.xlsx"></a><a href="dicionario_setores_20261113.xlsx"></a>'
+            '<a href="outro_20270101.xlsx"></a>')
+    assert versao_atual(f"{pasta}/dicionario_setores_20260520.xlsx", html) == f"{pasta}/dicionario_setores_20261113.xlsx"
+    assert versao_atual(f"{pasta}/sem_data_BR.zip", html) == f"{pasta}/sem_data_BR.zip"
+
+
 def test_referencias_do_relatorio_tem_links_https():
     from backend.app.fontes import REFERENCIAS
     links = [url for r in REFERENCIAS for _, url in r["links"]]

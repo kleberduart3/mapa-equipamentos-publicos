@@ -76,7 +76,7 @@ def baixar_doc(doc: dict) -> Path:
     DOCS.mkdir(parents=True, exist_ok=True)
     print(f"  documentação: {doc['arquivo']}")
     if doc["tipo"] == "url":
-        r = requests.get(doc["url"], timeout=120)
+        r = requests.get(F.versao_atual(doc["url"]), timeout=120)
         r.raise_for_status()
         destino.write_bytes(r.content)
     elif doc["tipo"] == "ftp":

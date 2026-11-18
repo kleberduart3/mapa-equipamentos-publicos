@@ -4,6 +4,32 @@ e pela seção "Fontes" do relatório PDF (links clicáveis).
 """
 from __future__ import annotations
 
+import re
+
+_DATA_NO_NOME = re.compile(r"_(\d{8})(\.[A-Za-z0-9]+)$")
+
+
+def versao_atual(url: str, html_da_pasta: str | None = None) -> str:
+    """O IBGE republica alguns arquivos com a data no nome (…_20260520.xlsx → …_20261113.xlsx)
+    e apaga o anterior. Se `url` tem data no nome e não existe mais, devolve o mesmo arquivo
+    com a data mais recente encontrada na listagem da pasta. Sem data no nome: a própria url."""
+    pasta, nome = url.rsplit("/", 1)
+    m = _DATA_NO_NOME.search(nome)
+    if not m:
+        return url
+    if html_da_pasta is None:
+        import requests
+        if requests.head(url, timeout=60, allow_redirects=True).status_code != 404:
+            return url
+        r = requests.get(pasta + "/", timeout=60)
+        r.raise_for_status()
+        html_da_pasta = r.text
+    base, ext = nome[:m.start()], m.group(2)
+    datas = re.findall(rf'href="(?:[^"]*/)?{re.escape(base)}_(\d{{8}}){re.escape(ext)}"', html_da_pasta)
+    if not datas:
+        raise RuntimeError(f"{nome} não existe mais e não há outra versão de {base}_*{ext} em {pasta}/")
+    return f"{pasta}/{base}_{max(datas)}{ext}"
+
 IBGE_SET = "https://ftp.ibge.gov.br/Censos/Censo_Demografico_2022/Agregados_por_Setores_Censitarios"
 CNEFE_FTP = ("https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/"
              "Censo_Demografico_2022/Arquivos_CNEFE/CSV")
