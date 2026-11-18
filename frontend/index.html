@@ -119,6 +119,14 @@
         <div id="metas"><p class="nota">Carregando…</p></div>
       </details>
 
+      <details class="passo dobra" id="sec-unidades">
+        <summary class="passo-topo"><span class="passo-n ico-editar" aria-hidden="true"></span><div>
+          <h2>Unidades da rede</h2>
+          <p class="passo-ajuda">Corrija o local, edite, desative ou inclua unidades que o INEP e o CNES não trazem.</p></div></summary>
+        <button type="button" class="btn sec largo" id="btn-incluir-unidade" hidden>+ Incluir unidade</button>
+        <div id="unidades"><p class="nota">Carregando…</p></div>
+      </details>
+
       <details class="passo dobra" id="sec-visoes" open>
         <summary class="passo-topo"><span class="passo-n ico-marcador" aria-hidden="true"></span><div>
           <h2>Visões salvas</h2>
@@ -134,6 +142,8 @@
       <div class="kpis" id="kpis"></div>
       <div class="legenda" id="legenda"></div>
       <div class="carregando" id="carregando">Carregando o município…</div>
+      <div class="aviso-mapa" id="aviso-mapa" role="status" hidden><span id="aviso-mapa-texto"></span>
+        <button type="button" class="btn sec btn-peq" id="btn-aviso-cancelar">Cancelar</button></div>
     </div>
   </main>
 
@@ -188,6 +198,29 @@
       <div class="dlg-acoes">
         <button type="button" class="btn sec" id="btn-visao-fechar">Cancelar</button>
         <button type="submit" class="btn">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-unidade">
+    <form class="dlg" id="form-unidade">
+      <h2 id="unidade-titulo">Editar unidade</h2>
+      <p class="nota" id="unidade-sub"></p>
+      <div class="segmento" id="unidade-fonte" role="radiogroup" aria-label="Tipo de unidade">
+        <label><input type="radio" name="unidade-fonte" value="escola" checked><span>Escola ou creche</span></label>
+        <label><input type="radio" name="unidade-fonte" value="ubs"><span>UBS</span></label>
+      </div>
+      <label class="campo-rot">Nome<input type="text" id="unidade-nome" maxlength="120" minlength="3"></label>
+      <fieldset class="caps" id="unidade-caps"></fieldset>
+      <label class="campo-rot">Endereço (opcional)<input type="text" id="unidade-endereco" maxlength="200"></label>
+      <label class="campo-rot">Observação (opcional)<input type="text" id="unidade-obs" maxlength="300"
+        placeholder="Ex.: conferido pela Secretaria de Educação em 18/11"></label>
+      <label class="toggle" id="unidade-ativo-rot"><input type="checkbox" id="unidade-ativo" checked><span class="trilho"></span>
+        <span>Em funcionamento</span></label>
+      <p id="res-unidade" class="nota" aria-live="polite"></p>
+      <div class="dlg-acoes">
+        <button type="button" class="btn sec" id="btn-unidade-fechar">Cancelar</button>
+        <button type="submit" class="btn" id="btn-unidade-salvar">Salvar</button>
       </div>
     </form>
   </dialog>

@@ -45,6 +45,7 @@ body { font-family: var(--sans); color: var(--texto); background: var(--fundo); 
 .ico-upload { --i: var(--i-upload); } .ico-imagem { --i: var(--i-imagem); } .ico-relatorio { --i: var(--i-relatorio); }
 .ico-pessoa { --i: var(--i-pessoa); } .ico-planilha { --i: var(--i-planilha); } .ico-alvo { --i: var(--i-alvo); }
 .ico-salvar { --i: var(--i-salvar); } .ico-camadas { --i: var(--i-camadas); } .ico-marcador { --i: var(--i-salvar); }
+.ico-editar { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3Cpath d='m13.5 6.5 4 4'/%3E%3C/svg%3E"); }
 
 /* ---------------------------------------------------------------- botões */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 16px;
@@ -398,3 +399,27 @@ dialog::backdrop { background: rgba(13, 20, 80, .45); }
   .acoes .btn.ico::before { width: 20px; height: 20px; }
   .marca .logo { height: 26px; }
 }
+
+/* ---------------------------------------------------------------- unidades da rede (ajustes da prefeitura) */
+.aviso-mapa { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 12px;
+  background: var(--texto); color: #fff; padding: 8px 8px 8px 16px; border-radius: 99px; box-shadow: var(--sombra); font-weight: 600;
+  font-size: 13px; max-width: calc(100% - 24px); }
+.aviso-mapa .btn { background: #fff; }
+.mapa-wrap.posicionando #mapa canvas { cursor: crosshair !important; }
+.unid-grupo { margin: 12px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-2); font-weight: 600; }
+.unid-lista { list-style: none; margin: 0; padding: 0; }
+.unid-lista li { padding: 8px 0; border-top: 1px solid var(--borda); font-size: 13px; line-height: 1.35; }
+.unid-lista li:first-child { border-top: 0; }
+.unid-lista .nome { font-weight: 600; display: block; }
+.unid-lista .det { color: var(--texto-2); font-size: 12px; display: block; }
+.unid-lista .acoes-li { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.unid-lista .falta { color: var(--deficit); }
+.pop-acoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--borda); }
+.pop-acoes .btn { min-height: 32px; padding: 0 10px; font-size: 12.5px; }
+.pop .origem { color: #1F7A47; font-size: 12px; margin-top: 8px; font-weight: 500; }
+fieldset.caps { border: 1px solid var(--borda); border-radius: var(--raio); padding: 8px 12px 4px; margin: 10px 0; }
+fieldset.caps legend { font-weight: 600; padding: 0 4px; }
+fieldset.caps label { display: grid; grid-template-columns: 1fr 110px; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; }
+fieldset.caps input { font: inherit; padding: 8px 10px; min-height: 38px; border: 1px solid var(--controle); border-radius: var(--raio); text-align: right; }
+#dlg-unidade .segmento { margin: 6px 0 4px; }
+#btn-captacao { margin-top: 10px; }

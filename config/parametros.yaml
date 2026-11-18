@@ -150,3 +150,22 @@ pne:
   metas:
     creche: 0.60                # a revisar: novo PNE, 60% das crianças de 0–3 anos
     pre_escola: 1.00            # universalização da pré-escola (4–5 anos), obrigatória pela Constituição
+
+# Estudo para captação de recursos (PDF da simulação): programas que costumam financiar cada tipo.
+# Programas, regras e valores mudam a cada edital: o estudo traz o aviso para confirmar o edital aberto.
+captacao:
+  aviso: "Programas, regras e valores mudam a cada edital. Confirme o edital aberto e os requisitos antes de submeter a proposta."
+  programas:
+    escola: &prog_escola
+      - {nome: "Novo PAC Seleções – Educação", orgao: "Governo Federal (Casa Civil / MEC)", link: "https://www.gov.br/casacivil/pt-br/novopac/selecoes"}
+      - {nome: "PAR – Plano de Ações Articuladas", orgao: "FNDE / MEC", link: "https://www.gov.br/fnde/pt-br/acesso-a-informacao/acoes-e-programas/programas/par"}
+      - {nome: "Emendas parlamentares (individuais e de bancada)", orgao: "Congresso Nacional · Transferegov", link: "https://www.gov.br/transferegov/pt-br"}
+    creche:
+      - {nome: "Novo PAC Seleções – Creches e escolas de educação infantil", orgao: "Governo Federal (Casa Civil / MEC)", link: "https://www.gov.br/casacivil/pt-br/novopac/selecoes"}
+      - {nome: "Proinfância", orgao: "FNDE / MEC", link: "https://www.gov.br/fnde/pt-br/acesso-a-informacao/acoes-e-programas/programas/proinfancia"}
+      - {nome: "PAR – Plano de Ações Articuladas", orgao: "FNDE / MEC", link: "https://www.gov.br/fnde/pt-br/acesso-a-informacao/acoes-e-programas/programas/par"}
+      - {nome: "Emendas parlamentares (individuais e de bancada)", orgao: "Congresso Nacional · Transferegov", link: "https://www.gov.br/transferegov/pt-br"}
+    ubs:
+      - {nome: "Novo PAC Seleções – Saúde (Unidades Básicas de Saúde)", orgao: "Governo Federal (Casa Civil / Ministério da Saúde)", link: "https://www.gov.br/casacivil/pt-br/novopac/selecoes"}
+      - {nome: "Propostas ao Fundo Nacional de Saúde (investimento na atenção primária)", orgao: "Ministério da Saúde · FNS", link: "https://portalfns.saude.gov.br/"}
+      - {nome: "Emendas parlamentares (individuais e de bancada)", orgao: "Congresso Nacional · Transferegov", link: "https://www.gov.br/transferegov/pt-br"}

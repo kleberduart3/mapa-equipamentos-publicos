@@ -214,6 +214,13 @@
     <li>Equipamentos sem localização ficam fora do cálculo; os de localização aproximada entram, sinalizados.</li>
   </ul>
 
+  {% if ajustes %}
+  <h3>Ajustes informados pela prefeitura</h3>
+  <ul class="duas">{% for a in ajustes %}<li><b>{{ a.nome }}</b>: {{ a.resumo }}{% if a.obs %} ({{ a.obs }}){% endif %}
+    <span class="sub">– {{ a.em }}</span></li>{% endfor %}</ul>
+  <p class="nota">Os dados oficiais (INEP, CNES) ficam guardados; estes ajustes valem para o mapa e os cálculos deste relatório.</p>
+  {% endif %}
+
   {% if pendencias %}
   <h3>Dados a confirmar com a prefeitura</h3>
   <ul class="duas">{% for p in pendencias %}<li>{{ p }}</li>{% endfor %}</ul>

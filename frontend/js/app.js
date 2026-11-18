@@ -106,7 +106,7 @@ function circulo([lng, lat], r, n = 72) {
   return c;
 }
 
-const PRECISAS = new Set(["inep_catalogo", "cnes", "cnefe_nome_no_cep"]);
+const PRECISAS = new Set(["inep_catalogo", "cnes", "cnefe_nome_no_cep", "prefeitura"]);
 const raioEfetivo = (t, f) => st.raio[t] * (f.properties.rural ? st.cfg.fator_raio_rural : 1);
 
 /* ---------- Início ---------- */
@@ -139,6 +139,7 @@ async function iniciar() {
   ligarUpload();
   ligarPdf();
   ligarVisoes();
+  ligarUnidades();
   let lembrado = null;
   try { lembrado = localStorage.getItem(CHAVE_MUNICIPIO); } catch { /* armazenamento bloqueado */ }
   const link = lerLinkVisao();
@@ -195,7 +196,7 @@ async function carregarMunicipio(cod) {
   st.areas = {}; st.prio = {}; st.setores = {}; st.ranking = null;
   st.mostrar = tipos[0];
   limparSimulacao();
-  ["sec-ranking", "sec-simular", "unid-mapa", "sec-metas"].forEach((id) => { $(`#${id}`).hidden = Boolean(ESTATICO); });
+  ["sec-ranking", "sec-simular", "unid-mapa", "sec-metas", "sec-unidades"].forEach((id) => { $(`#${id}`).hidden = Boolean(ESTATICO); });
 
   if (!st.map) criarMapa();
   else limparMapa();
@@ -244,6 +245,7 @@ async function carregarMunicipio(cod) {
   }));
   carregarVisoes();
   carregarMetas();
+  carregarUnidades();
 }
 
 /* ---------- Metas do PNE ---------- */
@@ -380,8 +382,13 @@ function popupEquip(p, c) {
   }
   const alerta = PRECISAS.has(p.fonte_coord) ? "" :
     `<div class="alerta">Localização ${p.fonte_coord === "sem_coordenada" ? "ausente" : "aproximada"} – confirmar com a prefeitura.</div>`;
+  const origem = p.ajustado ? `<div class="origem">Dados ajustados pela prefeitura${String(p.id).startsWith("PREF-") ? " (unidade incluída)" : ""}.</div>` : "";
+  const acoes = podeAjustar() && p.fonte ? `<div class="pop-acoes">
+      <button type="button" class="btn sec" data-aj="mover" data-fonte="${p.fonte}" data-id="${esc(p.id)}">Corrigir local</button>
+      <button type="button" class="btn sec" data-aj="editar" data-fonte="${p.fonte}" data-id="${esc(p.id)}">Editar</button>
+      <button type="button" class="btn sec" data-aj="desativar" data-fonte="${p.fonte}" data-id="${esc(p.id)}">Desativar</button></div>` : "";
   return `<div class="pop"><span class="tag" style="background:${c.cor}">${esc(c.rotulo)}</span>
-    <h4>${esc(p.nome)}</h4><dl>${linhas.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("")}</dl>${alerta}</div>`;
+    <h4>${esc(p.nome)}</h4><dl>${linhas.map(([a, b]) => `<dt>${esc(a)}</dt><dd>${esc(b)}</dd>`).join("")}</dl>${alerta}${origem}${acoes}</div>`;
 }
 
 /* ---------- Cobertura, déficit e radar ---------- */
@@ -488,6 +495,13 @@ function ligarCliquesMapa() {
   if (st.cliquesLigados) return;
   st.cliquesLigados = true;
   st.map.on("click", (e) => {
+    if (st.posicionando) {                       // marcando o local de uma unidade
+      const aoClicar = st.posicionando;
+      e.originalEvent.__tratado = true;
+      pararPosicionar();
+      aoClicar(e.lngLat);
+      return;
+    }
     if (!st.simulando) return;
     st.simulando = false;
     st.map.getCanvas().style.cursor = "";
@@ -495,7 +509,7 @@ function ligarCliquesMapa() {
     posicionarSimulacao(e.lngLat);
   });
   st.map.on("click", "deficit", (e) => {
-    if (st.simulando || st.mostrar === "prioridade") return;
+    if (st.simulando || e.originalEvent.__tratado || st.mostrar === "prioridade") return;
     const p = e.features[0].properties, c = st.cfg.tipos[st.mostrar];
     const linhas = [];
     if (p.bairro) linhas.push(["Bairro", p.bairro]);
@@ -633,7 +647,12 @@ async function simular(lngLat) {
       <dt>Somando a falta de vagas nas unidades próximas</dt><dd>${fmt(r.demanda_total_absorvivel)}</dd>
     </dl>
     ${htmlCusto(r.custo, c, t)}
-    <p class="nota">Arraste o marcador para comparar terrenos.</p>`;
+    <p class="nota">Arraste o marcador para comparar terrenos.</p>
+    ${ESTATICO ? "" : `<button type="button" class="btn largo ico ico-relatorio" id="btn-captacao"
+      title="PDF para anexar à proposta de recurso: necessidade, resultados, alternativas, custo, programas e mapa">Estudo para captação (PDF)</button>`}`;
+  const bc = $("#btn-captacao");
+  if (bc) bc.onclick = () => baixarRelatorio(`/api/${st.cod}/captacao.pdf?tipo=${t}&raio=${raio}&modo=${modo}`
+    + `&lon=${lngLat.lng.toFixed(6)}&lat=${lngLat.lat.toFixed(6)}`, bc, "Gerando o estudo… (~30 s)");
 }
 
 const reais = (v) => (v >= 1e6 ? `R$ ${fmt(v / 1e6, 1)} mi` : `R$ ${fmt(v)}`);
@@ -1030,6 +1049,194 @@ async function carregarFila() {
 
 function mostrarFila(ligar) {
   if (st.map.getLayer("fila")) st.map.setLayoutProperty("fila", "visibility", ligar ? "visible" : "none");
+}
+
+/* ---------- Unidades da rede: ajustes da prefeitura (corrigir local, editar, desativar, incluir) ---------- */
+const podeAjustar = () => !ESTATICO && st.cfg?.papel === "gestor";
+const nomeTipoCurto = (t) => (st.cfg.tipos[t] ? nomeCurto(st.cfg.tipos[t]) : t);
+const ehUbs = (t) => st.cfg.tipos[t]?.fonte_dados === "cnes";
+
+async function carregarUnidades() {
+  if (ESTATICO) return;
+  const cod = st.cod, caixa = $("#unidades"), pode = podeAjustar();
+  $("#btn-incluir-unidade").hidden = !pode;
+  let r;
+  try { r = await api(`/${cod}/ajustes`); } catch (e) { caixa.innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
+  if (st.cod !== cod) return;
+  st.ajustes = r;
+  const sem = r.sem_localizacao, aj = r.ajustes;
+  let h = "";
+  if (sem.length) {
+    h += `<p class="unid-grupo falta">Sem localização – fora do cálculo (${sem.length})</p><ul class="unid-lista">`
+      + sem.map((u) => `<li><span class="nome">${esc(u.nome)}</span>
+        <span class="det">${esc(u.tipos.map(nomeTipoCurto).join(", "))}${u.endereco ? ` · ${esc(u.endereco)}` : ""}</span>
+        ${pode ? `<div class="acoes-li"><button type="button" class="btn sec btn-peq" data-aj="marcar" data-fonte="${u.fonte}"
+          data-id="${esc(u.id)}" data-nome="${esc(u.nome)}">Marcar no mapa</button></div>` : ""}</li>`).join("") + "</ul>";
+  }
+  if (aj.length) {
+    h += `<p class="unid-grupo">Ajustes da prefeitura (${aj.length})</p><ul class="unid-lista">`
+      + aj.map((a) => `<li><span class="nome">${esc(a.nome)}</span>
+        <span class="det">${esc(a.resumo)}${a.obs ? ` · ${esc(a.obs)}` : ""}</span>
+        <span class="det">${esc(a.por || "")}${a.em ? ` · ${esc(a.em)}` : ""}${a.sem_efeito ? " · a unidade saiu do cadastro oficial" : ""}</span>
+        <div class="acoes-li">${a.lat != null ? `<button type="button" class="btn sec btn-peq" data-aj="ver" data-lat="${a.lat}" data-lon="${a.lon}">Ver no mapa</button>` : ""}
+          ${pode ? `<button type="button" class="btn sec btn-peq" data-aj="desfazer" data-fonte="${a.fonte}" data-id="${esc(a.id)}"
+            data-nome="${esc(a.nome)}" data-novo="${a.novo ? 1 : ""}">${a.novo ? "Excluir" : "Desfazer"}</button>` : ""}</div></li>`).join("") + "</ul>";
+  }
+  if (!h) h = `<p class="nota">Nenhum ajuste. Todas as unidades em funcionamento têm localização.</p>`;
+  h += `<p class="nota">${pode ? "Para corrigir o local, editar ou desativar, clique na unidade no mapa. " : ""}Os ajustes valem
+    para o mapa e os relatórios e continuam valendo quando o INEP e o CNES forem atualizados. As metas do PNE seguem as
+    matrículas oficiais do Censo Escolar.</p>`;
+  caixa.innerHTML = h;
+  if (sem.length && pode) $("#sec-unidades").open = true;
+}
+
+function posicionar(texto, aoClicar) {
+  fecharPopups();
+  st.posicionando = aoClicar;
+  $("#aviso-mapa-texto").textContent = texto;
+  $("#aviso-mapa").hidden = false;
+  $(".mapa-wrap").classList.add("posicionando");
+}
+
+function pararPosicionar() {
+  st.posicionando = null;
+  $("#aviso-mapa").hidden = true;
+  $(".mapa-wrap").classList.remove("posicionando");
+}
+
+function fecharPopups() {
+  document.querySelectorAll(".maplibregl-popup-close-button").forEach((b) => b.click());
+}
+
+const propsUnidade = (fonte, id) => st.equip.features.find((f) => f.properties.fonte === fonte && String(f.properties.id) === String(id))?.properties;
+
+function capacidadeAtual(p) {
+  if (!p) return {};
+  if (p.fonte === "ubs") return { ubs: p.equipes ?? 0 };
+  return { creche: p.mat_creche ?? 0, pre_escola: p.mat_pre_escola ?? 0,
+    fundamental_iniciais: p.mat_fund_iniciais ?? 0, fundamental_finais: p.mat_fund_finais ?? 0 };
+}
+
+async function enviarAjuste(metodo, caminho, corpo, aviso) {
+  $("#carregando").hidden = false; $("#carregando").textContent = aviso || "Atualizando o mapa…";
+  try {
+    const r = await requisitar(`/api/${st.cod}/ajustes${caminho}`, {
+      method: metodo, headers: corpo ? { "Content-Type": "application/json" } : {}, body: corpo ? JSON.stringify(corpo) : undefined });
+    if (!r.ok) throw new Error(await detalheErro(r));
+    await recarregarEquipamentos();
+    carregarUnidades();
+    carregarMetas();
+    return true;
+  } catch (e) {
+    alert(`Não foi possível salvar: ${e.message}`);
+    return false;
+  } finally {
+    $("#carregando").hidden = !(st.pendentes > 0);
+  }
+}
+
+/* Depois de um ajuste: unidades, alcance, déficit, ranking e simulação com os dados novos, sem perder a tela */
+async function recarregarEquipamentos() {
+  st.equip = await api(`/${st.cod}/equipamentos`);
+  Object.values(st.pins).flat().forEach((m) => m.remove());
+  st.pins = {};
+  desenharPins();
+  aplicarVisibilidade();
+  st.areas = {}; st.setores = {}; st.prio = {}; st.ranking = null;
+  Object.keys(st.cfg.tipos).forEach((t) => { desenharRaios(t); atualizarCobertura(t); });
+  if (st.mostrar === "prioridade") mudarMostrar("prioridade");
+}
+
+function abrirUnidade(o) {
+  st.unidadeEdit = o;
+  const novo = o.modo === "novo", dlg = $("#dlg-unidade");
+  $("#form-unidade").reset();
+  $("#res-unidade").textContent = "";
+  $("#unidade-titulo").textContent = novo ? "Incluir unidade" : "Editar unidade";
+  $("#unidade-sub").textContent = novo
+    ? "A unidade entra no mapa e nos cálculos como informada pela prefeitura. Pode ser excluída depois."
+    : `${o.nome}. O dado oficial (${o.fonte === "ubs" ? "CNES" : "INEP"}) continua guardado: o ajuste pode ser desfeito.`;
+  $("#unidade-fonte").hidden = !novo;
+  document.querySelector(`input[name="unidade-fonte"][value="${o.fonte || "escola"}"]`).checked = true;
+  $("#unidade-nome").value = o.nome || "";
+  $("#unidade-nome").required = novo;
+  $("#unidade-ativo-rot").hidden = novo;
+  montarCapacidades(o.fonte || "escola", o.cap || {});
+  dlg.showModal();
+  $("#unidade-nome").focus();
+}
+
+function montarCapacidades(fonte, cap) {
+  const ubs = fonte === "ubs";
+  const tipos = Object.entries(st.cfg.tipos).filter(([t]) => ehUbs(t) === ubs);
+  const porEquipe = tipos[0]?.[1].pessoas_por_equipe;
+  $("#unidade-caps").innerHTML = `<legend>${ubs ? "Equipes de Saúde da Família" : "Matrículas ou vagas por etapa"}</legend>`
+    + tipos.map(([t, c]) => `<label>${esc(ubs ? "Equipes" : nomeTipoCurto(t))}
+        <input type="number" min="0" max="100000" step="1" inputmode="numeric" data-cap="${t}" value="${cap[t] ?? ""}"></label>`).join("")
+    + `<p class="nota">${ubs ? `No cálculo, cada equipe atende ${porEquipe ? fmt(porEquipe) : "o número de referência de"} pessoas.`
+      : "Deixe em branco ou 0 as etapas que a unidade não atende."}</p>`;
+}
+
+async function salvarUnidade(e) {
+  e.preventDefault();
+  const o = st.unidadeEdit, novo = o.modo === "novo";
+  const fonte = novo ? document.querySelector('input[name="unidade-fonte"]:checked').value : o.fonte;
+  const cap = {};
+  $("#unidade-caps").querySelectorAll("input[data-cap]").forEach((i) => { if (i.value !== "") cap[i.dataset.cap] = Math.round(Number(i.value)); });
+  const nome = $("#unidade-nome").value.trim(), endereco = $("#unidade-endereco").value.trim(), obs = $("#unidade-obs").value.trim();
+  let corpo;
+  if (novo) {
+    if (!Object.values(cap).some((n) => n > 0)) { $("#res-unidade").textContent = "Informe o que a unidade atende (matrículas ou equipes)."; return; }
+    corpo = { fonte, nome, lat: o.lngLat.lat, lon: o.lngLat.lng, capacidade: cap };
+  } else {
+    corpo = {};
+    if (nome && nome !== o.nome) corpo.nome = nome;
+    const antes = o.cap || {};
+    if (Object.keys(cap).some((t) => cap[t] !== (antes[t] ?? 0))) corpo.capacidade = cap;
+    if (!$("#unidade-ativo").checked) corpo.ativo = false;
+  }
+  if (endereco) corpo.endereco = endereco;
+  if (obs) corpo.obs = obs;
+  if (!novo && !Object.keys(corpo).length) { $("#res-unidade").textContent = "Nada foi alterado."; return; }
+  $("#res-unidade").textContent = "Salvando…";
+  const ok = novo ? await enviarAjuste("POST", "", corpo, "Incluindo a unidade…")
+    : await enviarAjuste("PUT", `/${fonte}/${encodeURIComponent(o.id)}`, corpo);
+  if (ok) $("#dlg-unidade").close();
+  else $("#res-unidade").textContent = "";
+}
+
+function ligarUnidades() {
+  $("#btn-aviso-cancelar").onclick = pararPosicionar;
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && st.posicionando) pararPosicionar(); });
+  $("#btn-unidade-fechar").onclick = () => $("#dlg-unidade").close();
+  $("#form-unidade").onsubmit = salvarUnidade;
+  document.querySelectorAll('input[name="unidade-fonte"]').forEach((i) => (i.onchange = () => montarCapacidades(i.value, {})));
+  $("#btn-incluir-unidade").onclick = () => posicionar("Clique no mapa onde fica a nova unidade",
+    (ll) => abrirUnidade({ modo: "novo", fonte: "escola", lngLat: ll }));
+  document.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-aj]");
+    if (!b) return;
+    const { aj, fonte, id } = b.dataset;
+    const p = fonte ? propsUnidade(fonte, id) : null;
+    const nome = b.dataset.nome || p?.nome || id;
+    if (aj === "ver") { st.map.flyTo({ center: [Number(b.dataset.lon), Number(b.dataset.lat)], zoom: Math.max(st.map.getZoom(), 15) }); return; }
+    if (aj === "marcar" || aj === "mover") {
+      posicionar(`Clique no mapa onde fica: ${nome}`, (ll) =>
+        enviarAjuste("PUT", `/${fonte}/${encodeURIComponent(id)}`, { lat: ll.lat, lon: ll.lng }, "Corrigindo o local…"));
+      return;
+    }
+    if (aj === "editar") { fecharPopups(); abrirUnidade({ modo: "editar", fonte, id, nome, cap: capacidadeAtual(p) }); return; }
+    if (aj === "desativar") {
+      if (!confirm(`Desativar “${nome}”? Ela sai do mapa e dos cálculos (pode ser desfeito em Unidades da rede).`)) return;
+      fecharPopups();
+      enviarAjuste("PUT", `/${fonte}/${encodeURIComponent(id)}`, { ativo: false }, "Desativando…");
+      return;
+    }
+    if (aj === "desfazer") {
+      const msg = b.dataset.novo ? `Excluir “${nome}”, incluída pela prefeitura?` : `Desfazer o ajuste de “${nome}” e voltar ao dado oficial?`;
+      if (confirm(msg)) enviarAjuste("DELETE", `/${fonte}/${encodeURIComponent(id)}`, null, "Desfazendo…");
+    }
+  });
 }
 
 iniciar().catch((e) => { console.error(e); alert("Não foi possível carregar o mapa: " + e.message); });

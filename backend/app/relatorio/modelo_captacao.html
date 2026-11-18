@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Estudo para captação – {{ rotulo_curto }} – {{ m.nome }}/{{ m.uf }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Instrument Sans', Arial, sans-serif; color: #0D1450; font-size: 9.8pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 19pt; line-height: 1.15; margin: 0 0 4px; letter-spacing: -.02em; }
+  h2 { font-size: 12.5pt; margin: 16px 0 6px; color: #2F4BFF; break-after: avoid; }
+  h2 .art { font-size: 8pt; color: #4A5072; font-weight: 500; margin-left: 6px; }
+  h3 { font-size: 10pt; margin: 10px 0 4px; break-after: avoid; }
+  p { margin: 0 0 7px; }
+  .sub { color: #4A5072; }
+  .topo { border-bottom: 3px solid #2F4BFF; padding-bottom: 10px; margin-bottom: 12px; }
+  .marca { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .marca svg { height: 9mm; width: auto; display: block; }
+  .faixa { border-left: 6px solid {{ cor }}; padding-left: 10px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 6px; }
+  .kpi { border: 1px solid #D5D9EA; border-radius: 8px; padding: 7px 9px; break-inside: avoid; }
+  .kpi.destaque { background: #F4F6FF; border-color: #2F4BFF; }
+  .kpi .r { font-size: 7.2pt; text-transform: uppercase; letter-spacing: .04em; color: #4A5072; }
+  .kpi .v { font-family: 'IBM Plex Mono', monospace; font-size: 13pt; font-weight: 600; font-variant-numeric: tabular-nums; }
+  table { width: 100%; border-collapse: collapse; font-size: 8.7pt; margin: 5px 0 8px; }
+  th, td { padding: 4px 6px; border-bottom: 1px solid #D5D9EA; text-align: left; vertical-align: top; }
+  th { font-size: 7.3pt; text-transform: uppercase; letter-spacing: .03em; color: #4A5072; font-weight: 600; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.n { font-family: 'IBM Plex Mono', monospace; font-size: 8.3pt; }
+  tr { break-inside: avoid; }
+  tr.proposto td { background: #F4F6FF; font-weight: 600; }
+  .mapa { width: 100%; border: 1px solid #D5D9EA; border-radius: 6px; display: block; max-height: 128mm; object-fit: contain; }
+  .legenda, .nota { font-size: 8pt; color: #4A5072; }
+  .bloco { break-inside: avoid; }
+  .aviso { background: #FFF1EE; color: #8E2A1C; border-radius: 6px; padding: 6px 9px; font-size: 8.4pt; margin: 6px 0; }
+  .ok { background: #EAF6EF; color: #1F5F3A; border-radius: 6px; padding: 6px 9px; font-size: 8.4pt; margin: 6px 0; }
+  ul { padding-left: 16px; margin: 4px 0 8px; }
+  li { margin-bottom: 3px; break-inside: avoid; }
+  ul.check { list-style: none; padding-left: 0; }
+  ul.check li::before { content: "☐  "; color: #2F4BFF; }
+  a { color: #2F4BFF; text-decoration: underline; text-underline-offset: 2px; }
+  td.alt { white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <div class="marca">{{ logo }}<span class="sub">equicidade.com.br</span></div>
+  <div class="sub">Estudo para captação de recursos · {{ m.nome }} – {{ m.uf }}</div>
+  <h1>Nova unidade: {{ rotulo_curto }}{% if sim.bairro %} no bairro {{ sim.bairro }}{% endif %}</h1>
+  <div class="sub">{{ data }} · local proposto {{ coord }} (<a href="{{ link_mapa }}">ver no mapa</a>) ·
+    distância {{ 'a pé pelas ruas (OpenStreetMap)' if modo == 'rede' else 'em linha reta' }} · mora perto quem está a até {{ minutos }} min a pé
+    (cerca de {{ raio|n }} m{% if sim.rural %}; zona rural: {{ sim.raio_efetivo_m|min }} min{% endif %})</div>
+</div>
+
+<div class="kpis">
+  <div class="kpi destaque"><div class="r">Passam a morar perto</div><div class="v">{{ sim.novos_atendidos|n }}</div></div>
+  <div class="kpi destaque"><div class="r">Moram perto no município</div><div class="v">{{ sim.pct_coberta_antes|n(1) }}% → {{ sim.pct_coberta_depois|n(1) }}%</div></div>
+  <div class="kpi"><div class="r">Obra estimada</div><div class="v">{{ custo.obra_rs|reais if custo else '–' }}</div></div>
+  <div class="kpi"><div class="r">Obra por {{ 'pessoa nova atendida' if t == 'ubs' else 'vaga nova' }}</div><div class="v">{{ custo.obra_por_atendido_rs|reais if custo and custo.obra_por_atendido_rs else '–' }}</div></div>
+</div>
+<p class="nota">Este estudo reúne os elementos técnicos que a ferramenta consegue medir, na ordem do estudo técnico preliminar
+  (Lei 14.133/2021, art. 18, § 1º). Os itens que dependem da prefeitura estão listados no fim, para completar.</p>
+
+<h2>1. Necessidade <span class="art">art. 18, § 1º, I</span></h2>
+<div class="faixa">
+  <p>Hoje, <b>{{ ind.pct_coberta|n(1) }}%</b> {{ 'da população' if t == 'ubs' else 'das ' ~ unidade ~ ' da faixa atendida' }} ({{ ind.pop_faixa|n }} no total) moram a até
+    {{ minutos }} min a pé de uma unidade de {{ rotulo_curto|lower if t != 'ubs' else 'saúde (UBS)' }}. São <b>{{ ind.pop_descoberta|n }}</b>
+    morando longe, e o tempo médio a pé até a unidade mais próxima é de {{ acesso.tempo_medio_min|n(1) if acesso.tempo_medio_min is not none else '–' }} min.
+    O município tem {{ ind.equipamentos|n }} unidades com localização.</p>
+</div>
+<table>
+  <tr><th>Indicador</th><th class="n">Valor</th></tr>
+  <tr><td>Demanda pela meta (faixa × {{ meta_pct }}%)</td><td class="n">{{ ind.demanda_meta|n }}</td></tr>
+  <tr><td>Demanda sem nenhuma unidade perto de casa</td><td class="n">{{ ind.demanda_sem_cobertura|n }}</td></tr>
+  <tr><td>Demanda perto de unidades sem {{ 'equipes' if t == 'ubs' else 'vagas' }} suficientes</td><td class="n">{{ ind.deficit_capacidade|n }}</td></tr>
+  {% if t != 'ubs' %}<tr><td>Zona rural: moram perto</td><td class="n">{{ ind.pct_coberta_rural|n(1) }}%</td></tr>{% endif %}
+</table>
+
+{% if metas %}
+<h3>Meta do Plano Nacional de Educação</h3>
+<p>{{ metas.matriculas|n }} matrículas (todas as redes, Censo Escolar) para {{ metas.pop_faixa|n }} {{ unidade }} da faixa:
+  atendimento de <b>{{ metas.taxa_pct|n(1) }}%</b>, para uma meta de {{ metas.meta_pct }}%.
+  {% if metas.cumpre %}A meta está cumprida no total do município; a necessidade aqui é de <b>vaga perto de casa</b>.
+  {% else %}<b>Faltam {{ metas.vagas_para_meta|n }} vagas</b> para a meta.{% endif %}</p>
+{% endif %}
+
+{% if fila and fila.existe %}
+<h3>Fila de espera da creche (informada pela prefeitura)</h3>
+<p><b>{{ fila.localizados|n }}</b> crianças na fila localizadas no mapa (enviada em {{ fila.enviado_em }}){% if sim.bairro %};
+  <b>{{ fila.no_bairro|n }}</b> no bairro {{ sim.bairro }}{% endif %}.</p>
+{% endif %}
+
+{% if ranking %}
+<div class="bloco">
+<h3>Bairros com mais {{ unidade }} morando longe</h3>
+<table>
+  <tr><th>Bairro</th><th class="n">{{ unidade|capitalize }}</th><th class="n">Moram longe</th><th class="n">% longe</th><th class="n">Demanda não resolvida</th></tr>
+  {% for r in ranking %}
+  <tr{% if r.bairro == sim.bairro %} class="proposto"{% endif %}><td>{{ r.bairro }}{% if r.rural %} (rural){% endif %}</td><td class="n">{{ r.pop_faixa|n }}</td>
+    <td class="n">{{ r.pop_fora|n }}</td><td class="n">{{ r.pct_fora|n }}%</td><td class="n">{{ r.demanda_nao_resolvida|n }}</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+
+<h2>2. Solução proposta e resultados <span class="art">VII e IX</span></h2>
+<p>Uma nova unidade de {{ rotulo_curto|lower if t != 'ubs' else 'UBS' }} em {{ coord }}{% if sim.bairro %}, bairro {{ sim.bairro }}{% endif %}{% if sim.rural %}, zona rural{% endif %}.</p>
+<table>
+  <tr><th>Resultado esperado</th><th class="n">Valor</th></tr>
+  <tr><td>{{ unidade|capitalize }} a até {{ sim.raio_efetivo_m|min }} min a pé do local</td><td class="n">{{ sim.pop_no_raio|n }}</td></tr>
+  <tr><td>Dessas, as que hoje moram longe de qualquer unidade (passam a morar perto)</td><td class="n"><b>{{ sim.novos_atendidos|n }}</b></td></tr>
+  <tr><td>Demanda que a unidade pode absorver (sem unidade perto + falta de {{ 'equipes' if t == 'ubs' else 'vagas' }})</td><td class="n">{{ sim.demanda_total_absorvivel|n }}</td></tr>
+  <tr><td>Moram perto de uma unidade no município: antes → depois</td><td class="n">{{ sim.pct_coberta_antes|n(1) }}% → {{ sim.pct_coberta_depois|n(1) }}%</td></tr>
+</table>
+
+<div class="bloco">
+<h2>3. Alternativas consideradas <span class="art">V e XIII</span></h2>
+<p>O local proposto comparado às áreas que a ferramenta sugere para uma nova unidade (onde ela resolveria mais demanda),
+  com a mesma regra de distância.</p>
+<table>
+  <tr><th>Alternativa</th><th>Bairro</th><th class="n">Passam a morar perto</th><th class="n">Demanda absorvível</th><th class="n">Moram perto depois</th><th class="n">Obra por {{ 'pessoa nova' if t == 'ubs' else 'vaga nova' }}</th></tr>
+  {% for a in alternativas %}
+  <tr{% if a.proposto %} class="proposto"{% endif %}><td class="alt">{{ a.rotulo }}</td><td>{{ a.bairro or '–' }}</td><td class="n">{{ a.novos|n }}</td>
+    <td class="n">{{ a.absorve|n }}</td><td class="n">{{ a.depois|n(1) }}%</td>
+    <td class="n">{{ a.custo.obra_por_atendido_rs|reais if a.custo and a.custo.obra_por_atendido_rs else '–' }}</td></tr>
+  {% endfor %}
+</table>
+{% if alternativas|length == 1 %}
+  <p class="nota">A ferramenta não encontrou outra área onde uma unidade nova resolveria demanda acima do mínimo configurado
+    para este tipo: a demanda restante está espalhada ou já perto de unidades.</p>
+{% else %}
+  {% if melhor.proposto %}
+  <div class="ok">O local proposto é o que mais aproxima {{ unidade }} de uma unidade entre as {{ alternativas|length }} alternativas avaliadas.</div>
+  {% else %}
+  <div class="aviso">O local proposto fica em {{ posicao }}º lugar entre {{ alternativas|length }} alternativas. A {{ melhor.rotulo|lower }}
+    ({{ melhor.bairro or 'sem bairro definido' }}) aproximaria mais {{ (melhor.novos - alternativas[0].novos)|n }} {{ unidade }}.
+    Registre por que o local proposto foi escolhido (terreno disponível, custo, acesso, outras demandas).</div>
+  {% endif %}
+{% endif %}
+</div>
+
+<h2>4. Estimativa de quantidade e de valor <span class="art">IV e VI</span></h2>
+{% if custo %}
+<table>
+  <tr><th>Item</th><th class="n">Estimativa</th></tr>
+  <tr><td>Obra de 1 unidade padrão</td><td class="n">{{ custo.obra_rs|reais }}</td></tr>
+  <tr><td>Capacidade da unidade padrão</td><td class="n">{{ custo.capacidade|n }} {{ 'pessoas' if t == 'ubs' else 'vagas' }}</td></tr>
+  <tr><td>{{ 'Pessoas atendidas' if t == 'ubs' else 'Vagas ocupadas' }} no local (limitado à capacidade)</td><td class="n">{{ custo.atendidos|n }}</td></tr>
+  <tr><td>Custeio por ano</td><td class="n">{{ custo.custeio_anual_rs|reais }}</td></tr>
+  <tr><td>Obra por {{ 'pessoa nova atendida' if t == 'ubs' else 'vaga nova' }}</td><td class="n">{{ custo.obra_por_atendido_rs|reais if custo.obra_por_atendido_rs else '–' }}</td></tr>
+  {% if custo.unidades_para_demanda > 1 %}<tr><td>Unidades padrão para toda a demanda do local</td><td class="n">{{ custo.unidades_para_demanda }}</td></tr>{% endif %}
+</table>
+<p class="nota">Valores de referência configurados na ferramenta, <b>a confirmar</b> com o edital vigente (FNDE, Novo PAC, Ministério da Saúde)
+  e com os custos da rede municipal. O custeio não inclui o terreno.</p>
+{% else %}
+<p class="nota">Sem valores de referência de custo configurados para este tipo de unidade.</p>
+{% endif %}
+
+<div class="bloco">
+<h2>5. Mapa</h2>
+<img class="mapa" src="{{ mapa }}" alt="Mapa do local proposto e das alternativas">
+<p class="legenda">Ponto azul e área tracejada: o local proposto e o que fica a até {{ sim.raio_efetivo_m|min }} min a pé dele.
+  Radares numerados: as áreas sugeridas. Pinos: unidades existentes, com a área clara que cada uma alcança.
+  Tons de vermelho: {{ unidade }} morando longe ou sem {{ 'equipe' if t == 'ubs' else 'vaga' }} (mais escuro = mais).
+  Contorno vermelho no pino: localização aproximada.</p>
+</div>
+
+<div class="bloco">
+<h2>6. Onde buscar o recurso</h2>
+<ul>
+  {% for p in programas %}
+  <li><b>{{ p.nome }}</b> – {{ p.orgao }}. <a href="{{ p.link }}">página oficial</a></li>
+  {% endfor %}
+</ul>
+{% if aviso_programas %}<div class="aviso">{{ aviso_programas }}</div>{% endif %}
+</div>
+
+<div class="bloco">
+<h2>7. A completar pela prefeitura</h2>
+<ul class="check">
+  <li>Terreno: localização exata, matrícula ou documento de posse, área e topografia (o estudo usa o ponto marcado no mapa).</li>
+  <li>Previsão no plano de contratações anual e no orçamento (PPA, LDO, LOA) <span class="sub">– art. 18, § 1º, II</span>.</li>
+  <li>Requisitos da contratação e projeto (padrão do programa ou próprio) <span class="sub">– III</span>.</li>
+  <li>Providências prévias, como regularização do terreno e licenças <span class="sub">– X</span>, e contratações correlatas <span class="sub">– XI</span>.</li>
+  <li>Possíveis impactos ambientais e medidas de mitigação <span class="sub">– XII</span>.</li>
+  <li>Equipe e custeio: {{ 'equipes de Saúde da Família' if t == 'ubs' else 'professores e funcionários' }} para operar a unidade.</li>
+  <li>Posicionamento conclusivo do responsável <span class="sub">– XIII</span>.</li>
+</ul>
+</div>
+
+<div class="bloco">
+<h2>Método e fontes</h2>
+<p class="nota">População do Censo 2022 (IBGE), distribuída pelos endereços do CNEFE dentro de cada setor censitário e dividida por
+  idade com a tabela 9514 do SIDRA. Unidades do Censo Escolar 2024 (INEP) e do CNES{% if n_ajustes %}, com {{ n_ajustes }} ajuste(s)
+  informado(s) pela prefeitura (local, capacidade ou unidades novas){% endif %}. “Mora perto” = até {{ minutos }} min a pé
+  ({{ vel|n }} m por minuto{% if modo == 'rede' %}, pelas ruas do OpenStreetMap{% else %}, em linha reta{% endif %}); na zona rural a
+  distância é multiplicada por {{ fr|n(1) }}. A falta de {{ 'equipes' if t == 'ubs' else 'vagas' }} usa o método 2SFCA sobre
+  {{ 'as equipes de Saúde da Família' if t == 'ubs' else 'as matrículas' }} de cada unidade. Limitações: matrícula não é vaga;
+  escolas privadas não entram no mapa; a malha de ruas e a localização das unidades podem ter erros.</p>
+<ul class="nota">
+  {% for f in referencias %}
+  <li><b>{{ f.orgao }}</b> – {{ f.titulo }}. {% for rot, url in f.links %}<a href="{{ url }}">{{ rot }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</li>
+  {% endfor %}
+</ul>
+</div>
+</body>
+</html>

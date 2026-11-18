@@ -7,7 +7,13 @@ Os caches levam o código do município na chave.
 from __future__ import annotations
 
 import json
+import logging
+import subprocess
+import sys
+import threading
+import time
 from functools import lru_cache
+from pathlib import Path
 
 import geopandas as gpd
 import numpy as np
@@ -59,7 +65,8 @@ def config(cod: str) -> dict:
     ts = {}
     for t, c in P["equipamentos"].items():
         ts[t] = {"rotulo": c["rotulo"], "raio_m": c["raio_m"], **ESTILO.get(t, {"cor": "#555", "icone": "ponto"}),
-                 "unidade": UNIDADE.get(t, "pessoas"), "redes": c.get("redes", ["Municipal"])}
+                 "unidade": UNIDADE.get(t, "pessoas"), "redes": c.get("redes", ["Municipal"]),
+                 "fonte_dados": c.get("fonte_dados"), "pessoas_por_equipe": c.get("pessoas_por_equipe")}
     return {"municipio": b.m.info(), "fator_raio_rural": b.fr, "tipos": ts,
             "bbox": [float(v) for v in lim], "tem_rede": b.tem_rede,
             "velocidade_caminhada_m_min": velocidade(cod),
@@ -74,7 +81,9 @@ def limite(cod: str) -> dict:
 @lru_cache(maxsize=16)
 def equipamentos(cod: str) -> dict:
     """Um registro por equipamento e tipo atendido (uma escola pode ter vários)."""
+    from . import ajustes
     b = base(cod)
+    ajustados = set(ajustes.carregar(b.m))
     feats = []
     for t, cfg in b.P["equipamentos"].items():
         fac, _ = cob.ofertas(t, cfg, b.escolas, b.ubs)
@@ -88,13 +97,17 @@ def equipamentos(cod: str) -> dict:
             if isinstance(s, pd.DataFrame):
                 s = s.iloc[0]
             rural = sit["SITUACAO"].iloc[i] != "Urbana"
+            fonte = "ubs" if cfg["fonte_dados"] == "cnes" else "escola"
             props = {
                 "id": r.id, "tipo": t, "nome": r.nome, "rede": r.rede, "capacidade": _num(r.capacidade),
+                "fonte": fonte, "ajustado": f"{fonte}:{r.id}" in ajustados,
                 "fonte_coord": r.fonte_coord, "bairro": _num(sit["NM_BAIRRO"].iloc[i]), "rural": bool(rural),
                 "raio_m": cfg["raio_m"] * (b.fr if rural else 1),
             }
             if cfg["fonte_dados"] == "cnes":
-                props.update({"equipes": _num(s["equipes_ab"]), "endereco": f"{s['logradouro']}, {s['numero']} – {s['bairro']}"})
+                end = ", ".join(str(x) for x in (s["logradouro"], s["numero"]) if isinstance(x, str) and x.strip())
+                bai = s["bairro"] if isinstance(s["bairro"], str) and s["bairro"].strip() else ""
+                props.update({"equipes": _num(s["equipes_ab"]), "endereco": (end + (f" – {bai}" if bai else "")) or None})
             else:
                 props.update({k: _num(s[k]) for k in ["mat_creche", "mat_pre_escola", "mat_fund_iniciais", "mat_fund_finais"]})
             feats.append({"type": "Feature", "properties": props,
@@ -417,6 +430,79 @@ def prioridade(cod: str, modo: str = "reta") -> dict:
     h["prioridade_geral"] = h["prioridade_geral"].round(1)
     return json.loads(h.to_json())
 
+
+
+# ------------------------------- ajustes da prefeitura ------------------------------- #
+def sem_localizacao(cod: str) -> list[dict]:
+    """Unidades em funcionamento que ficaram fora do cálculo por falta de localização."""
+    b = base(cod)
+    vistos: dict[str, dict] = {}
+    for t, cfg in b.P["equipamentos"].items():
+        _, sem = cob.ofertas(t, cfg, b.escolas, b.ubs)
+        fonte = "ubs" if cfg["fonte_dados"] == "cnes" else "escola"
+        for r in sem.itertuples():
+            d = vistos.setdefault(f"{fonte}:{r.id}", {"chave": f"{fonte}:{r.id}", "fonte": fonte, "id": r.id,
+                                                      "nome": r.nome, "tipos": []})
+            d["tipos"].append(t)
+    end = b.escolas.drop_duplicates("codigo_inep").set_index("codigo_inep")["endereco"]
+    for d in vistos.values():
+        if d["fonte"] == "escola" and d["id"] in end.index:
+            d["endereco"] = _num(end.loc[d["id"]])
+    return sorted(vistos.values(), key=lambda d: d["nome"])
+
+
+def lista_ajustes(cod: str) -> list[dict]:
+    """Ajustes gravados, com o nome original da unidade (para a lista e o relatório)."""
+    from . import ajustes
+    m = municipio(cod)
+    itens = ajustes.carregar(m)
+    if not itens:
+        return []
+    esc = gpd.read_parquet(m.processados / "escolas.parquet").drop_duplicates("codigo_inep").set_index("codigo_inep")["escola"]
+    ubs = gpd.read_parquet(m.processados / "ubs.parquet").drop_duplicates("cnes").set_index("cnes")["nome"]
+    saida = []
+    for k, it in itens.items():
+        fonte, ref = k.split(":", 1)
+        orig = esc if fonte == "escola" else ubs
+        nome_original = None if it.get("novo") or ref not in orig.index else str(orig.loc[ref])
+        saida.append({"chave": k, "fonte": fonte, "id": ref, "nome": it.get("nome") or nome_original or ref,
+                      "nome_original": nome_original, "novo": bool(it.get("novo")), "resumo": ajustes.resumo(it),
+                      "ativo": it.get("ativo"), "capacidade": it.get("capacidade") or {}, "endereco": it.get("endereco"),
+                      "lat": it.get("lat"), "lon": it.get("lon"), "obs": it.get("obs"), "por": it.get("por"), "em": it.get("em"),
+                      "sem_efeito": not it.get("novo") and ref not in orig.index})
+    return sorted(saida, key=lambda d: d["nome"])
+
+
+_trava_recalculo = threading.Lock()
+_recalculo_pendente: set[str] = set()
+
+
+def recalcular(cod: str, esperar: bool = False) -> None:
+    """Depois de um ajuste: limpa os caches na hora (mapa, simulação e relatórios já usam o
+    ajuste) e refaz em segundo plano os arquivos pré-calculados (indicadores, prioridade em
+    linha reta, sugestões). Ajustes feitos em sequência viram um recálculo só."""
+    esquecer(cod)
+    with _trava_recalculo:
+        if cod in _recalculo_pendente and not esperar:
+            return
+        _recalculo_pendente.add(cod)
+
+    def rodar():
+        if not esperar:
+            time.sleep(3)                    # junta ajustes feitos em sequência
+        with _trava_recalculo:
+            _recalculo_pendente.discard(cod)
+        raiz = Path(__file__).resolve().parents[2]
+        r = subprocess.run([sys.executable, str(raiz / "backend" / "scripts" / "calcular_cobertura.py"), "--municipio", cod],
+                           capture_output=True, text=True, cwd=str(raiz))
+        if r.returncode:
+            logging.getLogger(__name__).error("recálculo de %s falhou: %s", cod, r.stderr[-2000:])
+        esquecer(cod)
+
+    if esperar:
+        rodar()
+    else:
+        threading.Thread(target=rodar, name=f"recalculo-{cod}", daemon=True).start()
 
 def esquecer(cod: str | None = None) -> None:
     """Limpa os caches (depois de reprocessar dados ou mudar parâmetros)."""

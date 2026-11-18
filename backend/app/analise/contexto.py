@@ -15,6 +15,7 @@ import pandas as pd
 from scipy.spatial import cKDTree
 
 from ..config import CRS_GEO, Municipio, municipio
+from .. import ajustes
 from . import cobertura as cob
 
 MAX_MUNICIPIOS_EM_MEMORIA = 3
@@ -57,6 +58,8 @@ class Base:
         self.setores = gpd.read_parquet(d / "setores.parquet")
         self.escolas = gpd.read_parquet(d / "escolas.parquet")
         self.ubs = gpd.read_parquet(d / "ubs.parquet")
+        # ajustes informados pela prefeitura (local, nome, capacidade, unidades novas ou fechadas)
+        self.escolas, self.ubs = ajustes.aplicar(m, self.escolas, self.ubs)
         self.limite = gpd.read_parquet(d / "limite.parquet")
         end = gpd.read_parquet(d / "enderecos.parquet")
         self.pts = cob.pontos_demanda(self.setores, end)

@@ -40,6 +40,7 @@ from ..acesso.web import (CabecalhosSeguranca, LimiteTaxa, ProtecaoCSRF, gerir_m
 from ..analise.contexto import MunicipioNaoProcessado
 from ..config import RAIZ, municipio, municipios
 from . import propostas
+from .equipamentos import rotas as rotas_ajustes
 from .visoes import rotas as rotas_visoes
 
 FRONT = RAIZ / "frontend"
@@ -73,6 +74,7 @@ app.add_middleware(CabecalhosSeguranca)
 app.include_router(rotas_auth)
 app.include_router(rotas_admin)
 app.include_router(rotas_visoes)
+app.include_router(rotas_ajustes)
 app.include_router(propostas.admin)
 app.include_router(propostas.publico)
 
@@ -265,6 +267,45 @@ async def relatorio(cod: str, request: Request, acesso=Depends(ver_municipio)):
     with nova_sessao_db() as s:
         cr.registrar(s, "relatorio_pdf", u.id, ip=ip_cliente(request),
                      detalhe=f"{cod} modo={modo} raios={raios}" + (f" visão=#{vid} {titulo_visao}" if titulo_visao else ""))
+        s.commit()
+    return FileResponse(destino, media_type="application/pdf", filename=destino.name,
+                        background=BackgroundTask(shutil.rmtree, pasta, ignore_errors=True))
+
+
+@app.get("/api/{cod}/captacao.pdf")
+async def captacao(cod: str, request: Request, tipo: str = Query(..., max_length=40), raio: int = RAIO,
+                   modo: str = MODO, lon: float = Query(..., ge=-75, le=-28), lat: float = Query(..., ge=-35, le=6),
+                   acesso=Depends(ver_municipio)):
+    """Estudo para captação de recursos de uma unidade nova no ponto (lon, lat): necessidade,
+    resultados, alternativas, custo estimado, programas de financiamento, mapa e fontes."""
+    from ..relatorio.captacao import gerar_pdf_captacao
+    from ..relatorio.gerar import nome_arquivo
+
+    u = acesso[0]
+    servicos.checa_tipo(cod, tipo)
+    if modo not in ("reta", "rede"):
+        raise HTTPException(400, "modo inválido")
+    await run_in_threadpool(_medidor, cod, modo)
+    try:                                         # ponto fora do município: erro claro antes de entrar na fila
+        bairro = (await run_in_threadpool(servicos.simular, cod, tipo, int(raio), modo, lon, lat)).get("bairro")
+    except servicos.ForaDoMunicipio:
+        raise HTTPException(400, "Escolha um ponto dentro do município.") from None
+    if not _limite_pdf.permitir(f"u{u.id}"):
+        raise HTTPException(429, "Limite de relatórios por hora atingido. Tente mais tarde.")
+    if _fila_pdf.locked():
+        raise HTTPException(503, "Outro relatório está sendo gerado. Tente de novo em um minuto.")
+    async with _fila_pdf:
+        pasta = Path(tempfile.mkdtemp(prefix="captacao_"))
+        destino = pasta / (f"estudo_captacao_{tipo}_{nome_arquivo(municipio(cod).nome)}"
+                           f"{'_' + nome_arquivo(bairro)[:30] if bairro else ''}.pdf")
+        try:
+            await run_in_threadpool(gerar_pdf_captacao, cod, tipo, lon, lat, int(raio), modo, destino)
+        except Exception:
+            shutil.rmtree(pasta, ignore_errors=True)
+            raise
+    with nova_sessao_db() as s:
+        cr.registrar(s, "estudo_captacao_pdf", u.id, ip=ip_cliente(request),
+                     detalhe=f"{cod} {tipo} raio={raio} modo={modo} ponto={lat:.5f},{lon:.5f}")
         s.commit()
     return FileResponse(destino, media_type="application/pdf", filename=destino.name,
                         background=BackgroundTask(shutil.rmtree, pasta, ignore_errors=True))
