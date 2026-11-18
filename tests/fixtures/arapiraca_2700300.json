@@ -9,25 +9,25 @@
     "pct_coberta": 36.3,
     "pct_coberta_rural": 39.7,
     "pop_descoberta": 8533,
-    "demanda_meta": 6701,
-    "demanda_sem_cobertura": 4267,
-    "deficit_capacidade": 338,
+    "demanda_meta": 8041,
+    "demanda_sem_cobertura": 5120,
+    "deficit_capacidade": 554,
     "equipamentos": 36
    },
-   "n_hex": 777,
-   "soma_deficit": 4492.0,
+   "n_hex": 853,
+   "soma_deficit": 5570.0,
    "radar": [
     [
      -36.6702,
      -9.7172
     ],
     [
-     -36.682,
-     -9.7069
-    ],
-    [
      -36.6618,
      -9.7699
+    ],
+    [
+     -36.682,
+     -9.7069
     ],
     [
      -36.6437,
@@ -48,13 +48,13 @@
     "pct_coberta": 23.8,
     "pct_coberta_rural": 28.4,
     "pop_descoberta": 10216,
-    "demanda_meta": 6701,
-    "demanda_sem_cobertura": 5108,
-    "deficit_capacidade": 72,
+    "demanda_meta": 8041,
+    "demanda_sem_cobertura": 6130,
+    "deficit_capacidade": 148,
     "equipamentos": 36
    },
-   "n_hex": 843,
-   "soma_deficit": 5064.0,
+   "n_hex": 902,
+   "soma_deficit": 6170.0,
    "radar": [
     [
      -36.6828,
@@ -87,33 +87,33 @@
     "pct_coberta": 96.0,
     "pct_coberta_rural": 100.0,
     "pop_descoberta": 533,
-    "demanda_meta": 6701,
-    "demanda_sem_cobertura": 267,
-    "deficit_capacidade": 3358,
+    "demanda_meta": 8041,
+    "demanda_sem_cobertura": 320,
+    "deficit_capacidade": 4570,
     "equipamentos": 36
    },
-   "n_hex": 627,
-   "soma_deficit": 3562.0,
+   "n_hex": 683,
+   "soma_deficit": 4821.0,
    "radar": [
     [
-     -36.6762,
-     -9.7239
+     -36.6704,
+     -9.7342
     ],
     [
-     -36.6556,
-     -9.7529
+     -36.6498,
+     -9.7666
     ],
     [
-     -36.635,
-     -9.7751
+     -36.6678,
+     -9.7699
     ],
     [
-     -36.668,
-     -9.7835
+     -36.6821,
+     -9.7205
     ],
     [
-     -36.6914,
-     -9.746
+     -36.6405,
+     -9.7377
     ]
    ]
   },
@@ -126,13 +126,13 @@
     "pct_coberta": 89.7,
     "pct_coberta_rural": 93.4,
     "pop_descoberta": 1383,
-    "demanda_meta": 6701,
-    "demanda_sem_cobertura": 691,
-    "deficit_capacidade": 2942,
+    "demanda_meta": 8041,
+    "demanda_sem_cobertura": 830,
+    "deficit_capacidade": 4074,
     "equipamentos": 36
    },
-   "n_hex": 663,
-   "soma_deficit": 3564.0,
+   "n_hex": 716,
+   "soma_deficit": 4830.0,
    "radar": [
     [
      -36.6703,
@@ -820,13 +820,16 @@
  },
  "prioridade": {
   "reta": {
-   "n": 637,
-   "soma": 3590.0
+   "n": 642,
+   "soma": 3612.0
   },
   "rede": {
    "n": 653,
-   "soma": 4325.0
+   "soma": 4332.0
   }
  },
- "n_equipamentos": 240
+ "n_equipamentos": 240,
+ "notas": [
+  "18/11/2026: creche e prioridade regravadas com a meta de creche de 60% (novo PNE); os demais itens seguem o gabarito de 12/11/2026."
+ ]
 }

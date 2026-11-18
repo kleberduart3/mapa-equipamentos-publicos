@@ -190,6 +190,13 @@ def indicadores(cod: str, _=Depends(ver_municipio)):
     return servicos.indicadores(cod)
 
 
+@app.get("/api/{cod}/metas")
+def metas(cod: str, modo: str = MODO, _=Depends(ver_municipio)):
+    """Metas do PNE: taxa de atendimento do município e bairros onde faltam vagas perto de casa."""
+    _medidor(cod, modo)
+    return JSONResponse(servicos.metas(cod, modo))
+
+
 @app.get("/api/{cod}/prioridade")
 def prioridade(cod: str, modo: str = MODO, _=Depends(ver_municipio)):
     """Índice de prioridade com os raios padrão do município."""
@@ -318,6 +325,67 @@ async def upload_iptu(cod: str, request: Request, acesso=Depends(gerir_municipio
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         await form.close()
+
+
+@app.post("/api/{cod}/upload-fila")
+async def upload_fila(cod: str, request: Request, acesso=Depends(gerir_municipio)):
+    """Fila de espera da creche (CSV ou planilha com CEP, ou latitude/longitude, de cada criança).
+
+    Tem dados pessoais de crianças: o arquivo fica só numa pasta temporária, apagada no fim,
+    e o que se guarda é a contagem por hexágono e por bairro (backend/app/fila.py)."""
+    from .. import fila
+    u = acesso[0]
+    limite_bytes = cfg().upload_max_mb * 1024 * 1024
+    tamanho = request.headers.get("content-length")
+    if tamanho and tamanho.isdigit() and int(tamanho) > limite_bytes + 1024 * 1024:
+        raise HTTPException(413, f"Arquivos acima de {cfg().upload_max_mb} MB.")
+    try:
+        form = await request.form(max_files=1, max_fields=5)
+    except Exception:                                   # noqa: BLE001
+        raise HTTPException(400, "Envio inválido: um arquivo por vez.") from None
+    tmp = Path(tempfile.mkdtemp(prefix="fila_"))
+    try:
+        a = next((a for a in form.getlist("arquivos") if isinstance(a, UploadFile)), None)
+        if a is None:
+            raise HTTPException(400, "Escolha o arquivo da fila.")
+        nome = Path(a.filename or "").name
+        if not _NOME_OK.match(nome) or Path(nome).suffix.lower() not in (".csv", ".xlsx", ".xls"):
+            raise HTTPException(400, "Envie a fila em CSV ou planilha do Excel (.xlsx).")
+        total = 0
+        with open(tmp / nome, "wb") as f:
+            while bloco := await a.read(1 << 20):
+                total += len(bloco)
+                if total > limite_bytes:
+                    raise HTTPException(413, f"Arquivos acima de {cfg().upload_max_mb} MB.")
+                f.write(bloco)
+        try:
+            df = await run_in_threadpool(fila.ler_planilha, tmp / nome)
+            resumo = await run_in_threadpool(fila.agregar, cod, df)
+        except Exception:                               # noqa: BLE001
+            log.exception("fila ilegível (%s)", cod)
+            return {"ok": False, "mensagem": "Não consegui ler a planilha. Confira o formato e tente de novo."}
+        finally:
+            df = None                                    # noqa: F841 – solta os dados pessoais da memória
+        if not resumo["localizados"]:
+            return {"ok": False, "mensagem": "Nenhuma criança localizada: a planilha precisa de uma coluna CEP "
+                    "(e, se tiver, número) ou de latitude e longitude."}
+        await run_in_threadpool(fila.salvar, cod, resumo)
+        with nova_sessao_db() as s:
+            cr.registrar(s, "upload_fila_creche", u.id, ip=ip_cliente(request),
+                         detalhe=f"{cod} total={resumo['total']} localizados={resumo['localizados']}")
+            s.commit()
+        return {"ok": True, **{k: resumo[k] for k in ("total", "localizados", "sem_local", "fora_do_municipio", "metodo")},
+                "mensagem": "Fila recebida. A planilha foi descartada; ficou guardada só a contagem por área."}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+        await form.close()
+
+
+@app.get("/api/{cod}/fila")
+def fila_creche(cod: str, _=Depends(ver_municipio)):
+    """Contagem da fila de espera da creche por hexágono e bairro (sem dado individual)."""
+    from .. import fila
+    return JSONResponse(fila.carregar(cod) or {"existe": False})
 
 
 def _conferir_iptu(cod: str, pasta: Path, nomes: list[str]) -> dict:

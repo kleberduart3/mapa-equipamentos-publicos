@@ -198,6 +198,7 @@ def montar_html(cod: str, estado: dict, titulo: str) -> str:
     hoje = date.today()
     env = Environment(loader=FileSystemLoader(AQUI), autoescape=select_autoescape(["html"]))
     env.filters["n"] = fmt
+    env.filters["reais"] = lambda v: f"R$ {fmt(v / 1e6, 1)} mi" if v >= 1e6 else f"R$ {fmt(v)}"
     env.filters["min"] = lambda mm: max(1, round(float(mm) / vel))
     return env.get_template("modelo_visao.html").render(
         logo=Markup(LOGO.read_text(encoding="utf-8")) if LOGO.exists() else "Equicidade",

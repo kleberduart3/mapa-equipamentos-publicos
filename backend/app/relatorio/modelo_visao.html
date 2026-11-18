@@ -78,6 +78,18 @@
     ({{ 'pelas ruas' if modo == 'rede' else 'em linha reta' }}{% if sim.rural %}, distância ampliada da zona rural{% endif %}) e, entre elas,
     as que hoje não têm nenhuma unidade nesse tempo. Demanda que a unidade poderia absorver, contando quem hoje está sem vaga ou equipe:
     {{ sim.demanda_total_absorvivel|n }}.</p>
+  {% if sim.custo %}{% set k = sim.custo %}{% set quem = 'pessoas' if sim.tipo == 'ubs' else 'vagas' %}
+  <h3>Quanto custa (estimativa)</h3>
+  <div class="kpis">
+    <div class="kpi"><div class="r">Obra de 1 unidade padrão</div><div class="v">{{ k.obra_rs|reais }}</div></div>
+    <div class="kpi"><div class="r">{{ 'Pessoas atendidas' if sim.tipo == 'ubs' else 'Vagas ocupadas' }} no local</div><div class="v">{{ k.atendidos|n }}</div></div>
+    <div class="kpi"><div class="r">Custeio por ano</div><div class="v">{{ k.custeio_anual_rs|reais }}</div></div>
+    <div class="kpi"><div class="r">Obra por {{ 'pessoa' if sim.tipo == 'ubs' else 'vaga' }}</div><div class="v">{{ k.obra_por_atendido_rs|reais if k.obra_por_atendido_rs else '–' }}</div></div>
+  </div>
+  <p class="nota">Unidade padrão com capacidade para {{ k.capacidade|n }} {{ quem }}{% if k.unidades_para_demanda > 1 %}; a demanda deste
+    local ocuparia {{ k.unidades_para_demanda }} unidades padrão{% endif %}. Valores de referência a confirmar com o edital vigente
+    (FNDE, Novo PAC, Ministério da Saúde) e com os custos da rede municipal.</p>
+  {% endif %}
 </div>
 {% endif %}
 

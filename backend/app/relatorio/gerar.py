@@ -335,6 +335,7 @@ def montar_html(b: Base, raios: dict[str, int] | None = None, modo: str = "reta"
         pop=int(b.setores["pop_total"].sum()), n_setores=len(b.setores), tipos=tipos,
         mapa_prioridade=mapa_prioridade(b, an), achados=achados(an, mat) + achado_rede(comp, modo), pendencias=pendencias(b),
         pesos="2/3 população morando longe e 1/3 falta de vagas ou equipes (sem cadastro do IPTU)",
+        metas=servicos.metas(b.m.cod, modo),
         modo=modo, comp=comp, rede_km=(b.medidor("rede").rede.km if b.tem_rede else None),
     )
 

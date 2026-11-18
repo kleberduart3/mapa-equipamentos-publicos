@@ -92,6 +92,19 @@
   <h3>Principais achados</h3>
   <ul class="achados">{% for a in achados %}<li>{{ a|safe }}</li>{% endfor %}</ul>
 
+  {% if metas.metas %}
+  <h3>Metas do PNE</h3>
+  <table class="comp">
+    <tr><th>Etapa</th><th class="n">Matrículas (todas as redes)</th><th class="n">População da faixa</th><th class="n">Atendimento</th><th class="n">Meta</th><th class="n">Vagas que faltam</th></tr>
+    {% for x in metas.metas %}
+    <tr><td>{{ x.rotulo }}</td><td class="n">{{ x.matriculas|n }}</td><td class="n">{{ x.pop_faixa|n }}</td>
+      <td class="n"><b>{{ x.taxa_pct|n(1) }}%</b></td><td class="n">{{ x.meta_pct }}%</td><td class="n">{{ '–' if x.cumpre else x.vagas_para_meta|n }}</td></tr>
+    {% endfor %}
+  </table>
+  <p class="nota">{{ metas.referencia }}{% if metas.prazo %}, prazo {{ metas.prazo }}{% endif %}. Matrículas do Censo Escolar 2024
+    (inclui a rede privada) sobre a população do Censo 2022.</p>
+  {% endif %}
+
   <h3>Onde agir primeiro</h3>
   <img class="mapa resumo" src="{{ mapa_prioridade }}" alt="Mapa do índice de prioridade">
   <p class="legenda">Hexágonos coloridos pelo índice de prioridade ({{ pesos }}). Radares: as três primeiras áreas

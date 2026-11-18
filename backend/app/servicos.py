@@ -320,7 +320,26 @@ def simular(cod: str, t: str, raio: int, modo: str, lon: float, lat: float) -> d
         "pct_coberta_antes": round(100 * antes / tot, 1),
         "pct_coberta_depois": round(100 * (antes + float(pf[novos].sum())) / tot, 1),
         "tempo_raio_min": round(raio_ef / velocidade(cod), 1),
+        "custo": custo_unidade(cod, t, float((r.sem_cobertura + r.deficit_cap)[ii].sum())),
         "area": {"type": "Feature", "properties": {}, "geometry": mapping(area.iloc[0])},
+    }
+
+
+def custo_unidade(cod: str, t: str, demanda: float) -> dict | None:
+    """Estimativa de investimento e custeio de UMA unidade nova (valores de referência do
+    parametros.yaml, a confirmar). Uma unidade atende no máximo a sua capacidade: o custo por
+    atendido usa min(capacidade, demanda do local), não o total de pessoas que passam a morar perto."""
+    c = tipos(cod)[t].get("custo")
+    if not c:
+        return None
+    cap, obra, por = float(c["capacidade"]), float(c["obra_rs"]), float(c["custeio_por_atendido_ano_rs"])
+    atendidos = min(cap, max(demanda, 0.0))
+    return {
+        "obra_rs": round(obra), "capacidade": round(cap), "atendidos": round(atendidos),
+        "custeio_anual_rs": round(atendidos * por),
+        "obra_por_atendido_rs": round(obra / atendidos) if atendidos >= 1 else None,
+        "unidades_para_demanda": int(np.ceil(demanda / cap)) if demanda > 0 else 0,
+        "fonte": c.get("fonte", "a definir"),
     }
 
 
@@ -340,6 +359,39 @@ def areas(cod: str, t: str, raio: int) -> dict:
     g = gpd.GeoSeries(rede.areas_servico(xy, r), crs=b.pts.crs).to_crs(WGS84).simplify(0.00005)
     return _fc([{"type": "Feature", "properties": {"id": fac["id"].iloc[i], "tipo": t, "raio_m": float(r[i])},
                  "geometry": mapping(g.iloc[i])} for i in range(len(fac))])
+
+
+def metas(cod: str, modo: str = "reta") -> dict:
+    """Metas legais de atendimento (PNE) no município e onde faltam vagas perto de casa.
+
+    Taxa de atendimento = matrículas de todas as redes, inclusive a privada (Censo Escolar),
+    ÷ população da faixa (Censo 2022), como no indicador oficial. Os bairros vêm do ranking
+    da ferramenta (demanda não resolvida perto de casa), que usa a meta de atendimento do
+    parametros.yaml; não se soma matrícula por bairro, porque a criança estuda fora do
+    bairro e escola privada não tem localização."""
+    P = municipio(cod).P
+    pne = P.get("pne") or {}
+    ind = indicadores(cod)["tipos"]
+    saida = []
+    for t, meta in (pne.get("metas") or {}).items():
+        if t not in ind or t not in tipos(cod) or "matriculas_total_municipio" not in ind[t]:
+            continue
+        d, cfg = ind[t], tipos(cod)[t]
+        pop, mat = float(d["pop_faixa"]), float(d["matriculas_total_municipio"])
+        taxa = 100 * mat / pop if pop else None
+        rk = ranking(cod, t, int(cfg["raio_m"]), modo)
+        bairros = sorted(({"bairro": b["bairro"], "vagas": b["demanda_nao_resolvida"], "longe": b["pop_fora"]}
+                          for b in rk["bairros"] if b["demanda_nao_resolvida"] >= 1), key=lambda b: -b["vagas"])[:8]
+        saida.append({
+            "tipo": t, "rotulo": cfg["rotulo"], "meta_pct": round(100 * float(meta)), "pop_faixa": round(pop),
+            "matriculas": round(mat), "matriculas_por_rede": d.get("matriculas_por_rede_municipio", {}),
+            "taxa_pct": round(taxa, 1) if taxa is not None else None,
+            "vagas_para_meta": max(0, round(float(meta) * pop - mat)),
+            "cumpre": taxa is not None and taxa >= 100 * float(meta) - 0.05,
+            "meta_ferramenta_pct": round(100 * float(cfg.get("taxa_atendimento_meta", meta))),
+            "raio_m": int(cfg["raio_m"]), "bairros": bairros,
+        })
+    return {"referencia": pne.get("referencia"), "prazo": pne.get("prazo"), "modo": modo, "metas": saida}
 
 
 def indicadores(cod: str) -> dict:

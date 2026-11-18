@@ -195,7 +195,7 @@ async function carregarMunicipio(cod) {
   st.areas = {}; st.prio = {}; st.setores = {}; st.ranking = null;
   st.mostrar = tipos[0];
   limparSimulacao();
-  ["sec-ranking", "sec-simular", "unid-mapa"].forEach((id) => { $(`#${id}`).hidden = Boolean(ESTATICO); });
+  ["sec-ranking", "sec-simular", "unid-mapa", "sec-metas"].forEach((id) => { $(`#${id}`).hidden = Boolean(ESTATICO); });
 
   if (!st.map) criarMapa();
   else limparMapa();
@@ -218,6 +218,10 @@ async function carregarMunicipio(cod) {
     camada({ id: "prioridade", type: "fill", source: "prioridade", layout: { visibility: "none" }, paint: {
       "fill-color": ["interpolate", ["linear"], ["get", "prioridade_geral"], 1, "#FFF1EE", 10, "#FFB3A8", 25, "#FF6B57", 45, "#8E2A1C"],
       "fill-opacity": 0.6 } });
+    fonte("fila", vazio());
+    camada({ id: "fila", type: "fill", source: "fila", layout: { visibility: "none" }, paint: {
+      "fill-color": ["interpolate", ["linear"], ["get", "fila"], 1, "#EDE4FA", 5, "#B79AE6", 15, "#7B4FB3", 40, "#4A2580"],
+      "fill-opacity": 0.7, "fill-outline-color": "#4A2580" } });
     fonte("simulacao", vazio());
     camada({ id: "simulacao-fill", type: "fill", source: "simulacao", paint: { "fill-color": "#2F4BFF", "fill-opacity": 0.12 } });
     camada({ id: "simulacao-linha", type: "line", source: "simulacao", paint: {
@@ -239,6 +243,42 @@ async function carregarMunicipio(cod) {
     pronto();
   }));
   carregarVisoes();
+  carregarMetas();
+}
+
+/* ---------- Metas do PNE ---------- */
+async function carregarMetas() {
+  if (ESTATICO) return;
+  const caixa = $("#metas"), cod = st.cod, modo = st.modo;
+  let r;
+  try { r = await api(`/${cod}/metas?modo=${modo}`); } catch (e) { caixa.innerHTML = `<p class="erro">${esc(e.message)}</p>`; return; }
+  let fila = null;
+  try { fila = await carregarFila(); } catch { /* sem fila: segue só com as metas */ }
+  if (st.cod !== cod) return;
+  if (!r.metas.length) { $("#sec-metas").hidden = true; return; }
+  const blocoFila = () => fila?.existe ? `<div class="fila">
+      <label class="toggle"><input type="checkbox" id="tg-fila"><span class="trilho"></span>
+        <span>Fila de espera: <b>${fmt(fila.localizados)}</b> crianças no mapa</span></label>
+      <ol class="meta-bairros">${fila.bairros.slice(0, 5).map((b) => `<li><span>${esc(b.bairro)}</span><b>${fmt(b.criancas)}</b></li>`).join("")}</ol>
+      <p class="nota">Enviada em ${esc(fila.enviado_em)} · ${fmt(fila.total)} na planilha${fila.sem_local ? `, ${fmt(fila.sem_local)} sem localização` : ""}.</p>
+    </div>` : (st.cfg.papel === "gestor" ? `<p class="nota">Envie a fila de espera da creche em <b>Importar dados</b> para ver a demanda real no mapa.</p>` : "");
+  caixa.innerHTML = r.metas.map((m) => {
+    const c = st.cfg.tipos[m.tipo], cheio = Math.min(100, (m.taxa_pct / m.meta_pct) * 100);
+    return `<div class="meta" style="--cor:${c.cor}">
+      <div class="meta-topo"><span>${esc(c.rotulo)}</span><b class="${m.cumpre ? "ok" : "falta"}">${m.cumpre ? "meta cumprida" : "abaixo da meta"}</b></div>
+      <div class="meta-barra" role="img" aria-label="Atendimento ${fmt(m.taxa_pct, 1)}% de uma meta de ${m.meta_pct}%">
+        <span class="cheio" style="width:${cheio}%"></span></div>
+      <div class="meta-num"><b>${fmt(m.taxa_pct, 1)}%</b> atendidas · meta ${m.meta_pct}%</div>
+      <p class="nota">${fmt(m.matriculas)} matrículas (todas as redes) para ${fmt(m.pop_faixa)} ${esc(c.unidade)} da faixa.
+        ${m.cumpre ? "" : `<b>Faltam ${fmt(m.vagas_para_meta)} vagas</b> para a meta.`}</p>
+      ${m.bairros.length ? `<p class="meta-sub">Onde faltam vagas perto de casa</p>
+        <ol class="meta-bairros">${m.bairros.slice(0, 5).map((b) => `<li><span>${esc(b.bairro)}</span><b>${fmt(b.vagas)}</b></li>`).join("")}</ol>` : ""}
+      ${m.tipo === "creche" ? blocoFila() : ""}
+    </div>`;
+  }).join("") + `<p class="nota">${esc(r.referencia || "")}${r.prazo ? `, prazo ${r.prazo}` : ""}. Matrículas do Censo Escolar 2024 e população do Censo 2022.
+    Vagas por bairro: demanda sem atendimento perto de casa (tempo a pé padrão), pela meta usada nos cálculos do mapa.</p>`;
+  const tg = $("#tg-fila");
+  if (tg) { tg.checked = Boolean(st.filaVisivel); mostrarFila(tg.checked); tg.onchange = () => { st.filaVisivel = tg.checked; mostrarFila(tg.checked); }; }
 }
 
 function criarMapa() {
@@ -592,7 +632,28 @@ async function simular(lngLat) {
       <dt>${t === "ubs" ? "Pessoas a atender" : "Vagas pela meta"} sem atendimento hoje</dt><dd>${fmt(r.demanda_sem_cobertura_absorvida)}</dd>
       <dt>Somando a falta de vagas nas unidades próximas</dt><dd>${fmt(r.demanda_total_absorvivel)}</dd>
     </dl>
-    <p class="nota">Supõe uma unidade dimensionada para essa demanda. Arraste o marcador para comparar terrenos.</p>`;
+    ${htmlCusto(r.custo, c, t)}
+    <p class="nota">Arraste o marcador para comparar terrenos.</p>`;
+}
+
+const reais = (v) => (v >= 1e6 ? `R$ ${fmt(v / 1e6, 1)} mi` : `R$ ${fmt(v)}`);
+
+/* Estimativa de investimento de uma unidade nova (valores de referência configuráveis, a confirmar) */
+function htmlCusto(k, c, t) {
+  if (!k) return "";
+  const quem = t === "ubs" ? "pessoas" : "vagas";
+  return `<div class="sim-custo">
+    <h4>Quanto custa (estimativa)</h4>
+    <dl>
+      <dt>Obra de 1 unidade padrão</dt><dd>${reais(k.obra_rs)}</dd>
+      <dt>Capacidade da unidade</dt><dd>${fmt(k.capacidade)} ${quem}</dd>
+      <dt>${t === "ubs" ? "Pessoas atendidas" : "Vagas ocupadas"} neste local</dt><dd>${fmt(k.atendidos)}</dd>
+      <dt>Custeio por ano</dt><dd>${reais(k.custeio_anual_rs)}</dd>
+      ${k.obra_por_atendido_rs ? `<dt>Obra por ${t === "ubs" ? "pessoa" : "vaga"}</dt><dd>${reais(k.obra_por_atendido_rs)}</dd>` : ""}
+    </dl>
+    ${k.unidades_para_demanda > 1 ? `<p class="nota"><b>A demanda deste local ocuparia ${k.unidades_para_demanda} unidades padrão.</b></p>` : ""}
+    <p class="nota">Valores de referência a confirmar com o edital vigente e os custos da rede (${esc(nomeTipo(c))}).</p>
+  </div>`;
 }
 
 function limparSimulacao() {
@@ -678,6 +739,7 @@ function mudarModo(modo) {
   if (st.mostrar === "prioridade") mudarMostrar("prioridade");
   if (st.sim) simular(st.sim.lngLat);
   atualizarLegenda();
+  carregarMetas();
 }
 
 /* ---------- Indicadores ---------- */
@@ -907,11 +969,19 @@ async function baixarRelatorio(url, btn, textoEspera) {
   }
 }
 
-/* ---------- Upload IPTU ---------- */
+/* ---------- Importar dados da prefeitura (fila da creche ou IPTU) ---------- */
+const tipoUpload = () => document.querySelector('input[name="tipo-upload"]:checked').value;
+
 function ligarUpload() {
   const dlg = $("#dlg-upload");
   $("#btn-upload").onclick = () => { $("#res-upload").textContent = ""; dlg.showModal(); };
+  document.querySelectorAll('input[name="tipo-upload"]').forEach((i) => (i.onchange = () => {
+    $("#ajuda-fila").hidden = tipoUpload() !== "fila";
+    $("#ajuda-iptu").hidden = tipoUpload() !== "iptu";
+    $("#res-upload").textContent = "";
+  }));
   $("#btn-enviar").onclick = async () => {
+    if (tipoUpload() === "fila") return enviarFila();
     const arqs = $("#arq-iptu").files;
     if (!arqs.length) { $("#res-upload").textContent = "Escolha ao menos um arquivo."; return; }
     const fd = new FormData();
@@ -924,6 +994,42 @@ function ligarUpload() {
         : r.mensagem;
     } catch (e) { $("#res-upload").textContent = `Erro no envio: ${e.message}`; }
   };
+}
+
+async function enviarFila() {
+  const arq = $("#arq-fila").files[0], res = $("#res-upload");
+  if (!arq) { res.textContent = "Escolha a planilha da fila."; return; }
+  const fd = new FormData();
+  fd.append("arquivos", arq);
+  res.textContent = "Enviando e localizando as crianças…";
+  try {
+    const r = await api(`/${st.cod}/upload-fila`, { method: "POST", body: fd });
+    if (!r.ok) { res.textContent = r.mensagem; return; }
+    const m = r.metodo, partes = [];
+    if (m.coordenadas) partes.push(`${fmt(m.coordenadas)} pelas coordenadas`);
+    if (m.cep_numero) partes.push(`${fmt(m.cep_numero)} pelo CEP e número`);
+    if (m.cep) partes.push(`${fmt(m.cep)} pelo centro do CEP`);
+    res.textContent = `${fmt(r.localizados)} de ${fmt(r.total)} crianças localizadas no mapa (${partes.join(", ")}).`
+      + (r.sem_local ? ` ${fmt(r.sem_local)} sem CEP reconhecido.` : "")
+      + (r.fora_do_municipio ? ` ${fmt(r.fora_do_municipio)} fora do município.` : "") + ` ${r.mensagem}`;
+    st.fila = null;
+    carregarMetas();
+  } catch (e) { res.textContent = `Erro no envio: ${e.message}`; }
+}
+
+/* ---------- Fila da creche (contagem por área) ---------- */
+async function carregarFila() {
+  if (ESTATICO) return null;
+  if (st.fila?.cod === st.cod) return st.fila.dados;
+  const cod = st.cod, d = await api(`/${cod}/fila`);
+  if (st.cod !== cod) return d;
+  st.fila = { cod, dados: d };
+  fonte("fila", d.existe ? d.hex : vazio());          // a camada é criada em carregarMunicipio
+  return d;
+}
+
+function mostrarFila(ligar) {
+  if (st.map.getLayer("fila")) st.map.setLayoutProperty("fila", "visibility", ligar ? "visible" : "none");
 }
 
 iniciar().catch((e) => { console.error(e); alert("Não foi possível carregar o mapa: " + e.message); });

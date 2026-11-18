@@ -44,8 +44,13 @@ equipamentos:
     oferta: oferta_creche
     capacidade: mat_creche      # proxy; trocar por vagas se a prefeitura informar
     redes: [Municipal]
-    taxa_atendimento_meta: 0.50 # a revisar (meta 1 do PNE: 50% de 0–3 anos)
+    taxa_atendimento_meta: 0.60 # novo PNE 2026–2036: 60% das crianças de 0–3 anos (decisão de 18/11/2026)
     fonte: "a definir"
+    custo:                      # estimativa da simulação; valores de referência A CONFIRMAR
+      obra_rs: 3500000          # a revisar: projeto padrão FNDE/Proinfância (Novo PAC) – conferir edital vigente
+      capacidade: 188           # a revisar: vagas em tempo integral de um projeto padrão
+      custeio_por_atendido_ano_rs: 15000   # a revisar: custo-aluno-ano de creche integral (FUNDEB/rede)
+      fonte: "a definir"
 
   pre_escola:
     rotulo: "Pré-escola (4–5 anos)"
@@ -57,6 +62,11 @@ equipamentos:
     redes: [Municipal]
     taxa_atendimento_meta: 1.00 # matrícula obrigatória
     fonte: "a definir"
+    custo:
+      obra_rs: 3500000          # a revisar
+      capacidade: 376           # a revisar: dois turnos
+      custeio_por_atendido_ano_rs: 9000    # a revisar
+      fonte: "a definir"
 
   fundamental_iniciais:
     rotulo: "Fundamental – anos iniciais (6–10 anos)"
@@ -68,6 +78,11 @@ equipamentos:
     redes: [Municipal]          # alternativa calculada também: [Municipal, Estadual, Federal]
     taxa_atendimento_meta: 1.00
     fonte: "a definir"
+    custo:
+      obra_rs: 8000000          # a revisar: escola padrão FNDE de 12 salas
+      capacidade: 780           # a revisar: dois turnos
+      custeio_por_atendido_ano_rs: 7000    # a revisar
+      fonte: "a definir"
 
   fundamental_finais:
     rotulo: "Fundamental – anos finais (11–14 anos)"
@@ -79,6 +94,11 @@ equipamentos:
     redes: [Municipal, Estadual, Federal]   # decisão de 12/11/2026: conta toda a rede pública
     taxa_atendimento_meta: 1.00
     fonte: "a definir"
+    custo:
+      obra_rs: 8000000          # a revisar
+      capacidade: 780           # a revisar
+      custeio_por_atendido_ano_rs: 7500    # a revisar
+      fonte: "a definir"
 
   ubs:
     rotulo: "Unidade Básica de Saúde"
@@ -89,6 +109,11 @@ equipamentos:
     pessoas_por_equipe: 3500    # referência a revisar (capacidade = equipes × este valor)
     taxa_atendimento_meta: 1.00
     fonte: "a definir"
+    custo:
+      obra_rs: 2500000          # a revisar: UBS porte I (Novo PAC Saúde) – conferir edital vigente
+      capacidade: 7000          # a revisar: pessoas (2 equipes de Saúde da Família)
+      custeio_por_atendido_ano_rs: 180     # a revisar: custeio da atenção primária por pessoa/ano
+      fonte: "a definir"
 
 # Variante "toda a rede pública" calculada para comparação nestes tipos
 # (anos finais já usa toda a rede pública; anos iniciais: o estado não tem matrícula em Arapiraca)
@@ -116,3 +141,12 @@ prioridade:
     fundamental_iniciais: 150
     fundamental_finais: 150
     ubs: 2000                   # pessoas
+
+# Metas legais de atendimento (painel "Metas do PNE" e relatório).
+# Taxa = matrículas de TODAS as redes (inclusive privada, Censo Escolar) ÷ população da faixa (Censo 2022).
+pne:
+  referencia: "Novo Plano Nacional de Educação 2026–2036 (sancionado em abril de 2026)"   # a revisar: citar o nº da lei
+  prazo: 2036
+  metas:
+    creche: 0.60                # a revisar: novo PNE, 60% das crianças de 0–3 anos
+    pre_escola: 1.00            # universalização da pré-escola (4–5 anos), obrigatória pela Constituição

@@ -23,7 +23,7 @@
       <select id="municipio"></select>
     </label>
     <div class="acoes">
-      <button id="btn-upload" class="btn sec ico ico-upload" hidden title="Enviar o cadastro imobiliário (IPTU) da prefeitura">Importar dados</button>
+      <button id="btn-upload" class="btn sec ico ico-upload" hidden title="Enviar a fila da creche ou o cadastro do IPTU da prefeitura">Importar dados</button>
       <div class="conta" id="exportar">
         <button id="btn-baixar-mapa" class="btn sec ico ico-imagem" aria-haspopup="menu" aria-expanded="false"
           title="O mapa como está na tela, com legenda, escala e fontes">Baixar mapa</button>
@@ -112,6 +112,13 @@
         <button type="button" class="btn sec btn-peq" id="btn-sim-limpar" hidden>Limpar simulação</button>
       </section>
 
+      <details class="passo dobra" id="sec-metas" open>
+        <summary class="passo-topo"><span class="passo-n" aria-hidden="true">§</span><div>
+          <h2>Metas do PNE</h2>
+          <p class="passo-ajuda">Quanto falta para a meta legal de creche e pré-escola, e onde faltam vagas perto de casa.</p></div></summary>
+        <div id="metas"><p class="nota">Carregando…</p></div>
+      </details>
+
       <details class="passo dobra" id="sec-visoes" open>
         <summary class="passo-topo"><span class="passo-n ico-marcador" aria-hidden="true"></span><div>
           <h2>Visões salvas</h2>
@@ -132,10 +139,23 @@
 
   <dialog id="dlg-upload">
     <form method="dialog" class="dlg">
-      <h2>Importar cadastro imobiliário (IPTU)</h2>
-      <p>Envie um CSV com colunas de latitude e longitude, um GeoPackage, um GeoJSON ou um shapefile
-        (.zip, ou os arquivos .shp, .dbf, .shx e .prj juntos).</p>
-      <input type="file" id="arq-iptu" multiple accept=".csv,.zip,.gpkg,.geojson,.json,.shp,.dbf,.shx,.prj,.cpg">
+      <h2>Importar dados da prefeitura</h2>
+      <div class="segmento" id="tipo-upload" role="radiogroup" aria-label="O que importar">
+        <label><input type="radio" name="tipo-upload" value="fila" checked><span>Fila da creche</span></label>
+        <label><input type="radio" name="tipo-upload" value="iptu"><span>Cadastro do IPTU</span></label>
+      </div>
+      <div id="ajuda-fila">
+        <p>Planilha (.xlsx) ou CSV com uma linha por criança na fila de espera e uma coluna <b>CEP</b>
+          (com <b>número</b> da casa, se houver) ou colunas de <b>latitude</b> e <b>longitude</b>.</p>
+        <p class="nota">A planilha é lida e descartada na hora. Fica guardada só a quantidade de crianças por área do mapa,
+          sem nome, documento ou endereço. Pode enviar a planilha sem as colunas de nome e documento.</p>
+        <input type="file" id="arq-fila" accept=".csv,.xlsx,.xls">
+      </div>
+      <div id="ajuda-iptu" hidden>
+        <p>Envie um CSV com colunas de latitude e longitude, um GeoPackage, um GeoJSON ou um shapefile
+          (.zip, ou os arquivos .shp, .dbf, .shx e .prj juntos).</p>
+        <input type="file" id="arq-iptu" multiple accept=".csv,.zip,.gpkg,.geojson,.json,.shp,.dbf,.shx,.prj,.cpg">
+      </div>
       <p id="res-upload" class="nota" aria-live="polite"></p>
       <div class="dlg-acoes">
         <button value="cancel" class="btn sec">Fechar</button>
