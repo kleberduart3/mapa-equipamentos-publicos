@@ -1,0 +1,44 @@
+"""Nome da escola (INEP) × estabelecimento de ensino do CNEFE: casos reais de Limoeiro de Anadia e
+Palmeira dos Índios. Em cidade pequena todas as escolas têm o mesmo CEP, então o nome decide."""
+from __future__ import annotations
+
+import pytest
+
+from backend.app.ingestao.inep import SEMELHANCA_MIN_CEP, _nome_confere, _pesos_idf, _tokens
+
+CNEFE = [  # estabelecimentos de ensino do CNEFE de uma cidade pequena
+    "ESCOLA MUN DE EDU BASICA STO ANTONIO", "ESCOLA PEDRO ANTONIO LINO", "ESCOLA M MARIA CELINA R DE ALBUQUERQUE",
+    "ESCOLA MUN DE EDUC BASICA MA JULIA F E A", "CENTRO MUNICIPAL DE EDUCACAO INFANTIL LUZINETE MARIA DA CONCEICAO",
+    "ESCOLA MUNICIPAL DE EDUCACAO BASICA NOSSA SENHORA DA CONSEICAO", "PREFEITO BENICIO FERREURA REIS",
+    "ESCOLA MUNICIPAL PRESIDENTE ERNESTO GEIS", "ESCOLA MUNICIPAL PROFESSORA MARINETE NEV", "IFAL",
+    "CRECHE LEOBINO SOARES DA MOTA SALAO PAROQUIAL", "ESCOLA MARIA LIMA DA CONCEICAO", "ESCOLA JOSE TEODORO DA SILVA",
+]
+IDF = _pesos_idf([_tokens(n) for n in CNEFE])
+
+
+def confere(escola, cnefe):
+    return _nome_confere(_tokens(escola), _tokens(cnefe), IDF, SEMELHANCA_MIN_CEP)
+
+
+@pytest.mark.parametrize("escola, cnefe", [
+    ("ESCOLA MUNICIPAL DE EDUCACAO BASICA MAX ANTONIO FERREIRA BARBOSA", "ESCOLA MUN DE EDU BASICA STO ANTONIO"),
+    ("ESCOLA MUNICIPAL DE EDUCACAO BASICA MARIA JULIA FERREIRA DE ALBUQUERQUE", "ESCOLA M MARIA CELINA R DE ALBUQUERQUE"),
+    ("ESCOLA MUNICIPAL DE EDUCACAO BASICA NOSSA SENHORA DA CONCEICAO",
+     "CENTRO MUNICIPAL DE EDUCACAO INFANTIL LUZINETE MARIA DA CONCEICAO"),
+])
+def test_recusa_outra_escola_com_palavra_em_comum(escola, cnefe):
+    assert not confere(escola, cnefe)
+
+
+@pytest.mark.parametrize("escola, cnefe", [
+    ("ESCOLA MUNICIPAL DE EDUCACAO BASICA MARIA JULIA FERREIRA DE ALBUQUERQUE", "ESCOLA MUN DE EDUC BASICA MA JULIA F E A"),
+    ("ESCOLA MUNICIPAL DE EDUCACAO BASICA NOSSA SENHORA DA CONCEICAO",
+     "ESCOLA MUNICIPAL DE EDUCACAO BASICA NOSSA SENHORA DA CONSEICAO"),          # erro de digitação
+    ("ESCOLA MUNICIPAL DE EDUCACAO BASICA PREFEITO BENICIO FERREIRA REIS", "PREFEITO BENICIO FERREURA REIS"),
+    ("ESCOLA MUNICIPAL DE EDUCACAO BASICA PRESIDENTE ERNESTO GEISEL", "ESCOLA MUNICIPAL PRESIDENTE ERNESTO GEIS"),
+    ("ESCOLA DE 1º GRAU PROFª MARINETE NEVES", "ESCOLA MUNICIPAL PROFESSORA MARINETE NEV"),  # nome cortado, palavra rara
+    ("IFAL - CAMPUS PALMEIRA DOS INDIOS", "IFAL"),
+    ("CEI LEOBINO SOARES DA MOTTA", "CRECHE LEOBINO SOARES DA MOTA SALAO PAROQUIAL"),       # complemento no CNEFE
+])
+def test_aceita_a_mesma_escola_abreviada_ou_com_erro(escola, cnefe):
+    assert confere(escola, cnefe)

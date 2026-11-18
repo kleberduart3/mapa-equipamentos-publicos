@@ -95,7 +95,7 @@ _GENERICAS = {"ESCOLA", "ENSINO", "FUNDAMENTAL", "CENTRO", "EDUCACAO", "INFANTIL
               "PROFESSOR", "PROF", "PROFª", "TEMPO", "INTEGRAL", "MUNICIPAL", "CRECHE", "DOS", "DAS",
               "FUND", "ESC", "ENS", "CEI", "EDUC", "COMUNITARIA", "SENHORA", "NOSSA", "SILVA", "SANTOS",
               "ESTADUAL", "INDIGENA", "COLEGIO", "GRAU", "BASICA", "EDUCACIONAL", "CRECHE", "UNIDADE",
-              "INSTITUTO", "PROFESSORES", "MUNICIPIO"}
+              "INSTITUTO", "PROFESSORES", "MUNICIPIO", "BASIC"}
 
 
 def _tokens(nome) -> set[str]:
@@ -114,20 +114,52 @@ SEMELHANCA_MIN_CEP = 0.5
 
 def _pesos_idf(conjuntos) -> dict[str, float]:
     import math
+    conjuntos = {frozenset(c) for c in conjuntos}     # um estabelecimento com vários endereços conta uma vez
     n = max(len(conjuntos), 1)
     df: dict[str, int] = {}
     for c in conjuntos:
         for t in c:
             df[t] = df.get(t, 0) + 1
-    return {t: math.log((n + 1) / (k + 0.5)) for t, k in df.items()} | {"__novo__": math.log((n + 1) / 0.5)}
+    return ({t: math.log((n + 1) / (k + 0.5)) for t, k in df.items()}
+            | {"__novo__": math.log((n + 1) / 0.5), "__raro__": math.log((n + 1) / 1.5)})
+
+
+def _mesma_palavra(a: str, b: str) -> bool:
+    """Igual, abreviada (GEIS = GEISEL) ou com erro de digitação (FERREURA = FERREIRA)."""
+    from difflib import SequenceMatcher
+    if a == b or a.startswith(b) or b.startswith(a):
+        return True
+    return SequenceMatcher(None, a, b).ratio() >= 0.8
+
+
+def _casadas(a: set[str], b: set[str]) -> set[str]:
+    """Palavras de `a` que têm correspondente em `b`."""
+    return {t for t in a if any(_mesma_palavra(t, u) for u in b)}
 
 
 def _semelhanca(alvo: set[str], cand: set[str], idf: dict[str, float]) -> float:
+    """Fração do "peso" de `alvo` que aparece em `cand`."""
     if not alvo:
         return 0.0
     novo = idf["__novo__"]
     total = sum(idf.get(t, novo) for t in alvo)
-    return sum(idf.get(t, novo) for t in alvo & cand) / total
+    return sum(idf.get(t, novo) for t in _casadas(alvo, cand)) / total
+
+
+def _nome_confere(alvo: set[str], cand: set[str], idf: dict[str, float], minimo: float) -> bool:
+    """O nome tem de bater NOS DOIS SENTIDOS. Em cidade pequena todas as escolas têm o mesmo
+    CEP, e só um sentido aceitava "MAX ANTONIO FERREIRA BARBOSA" = "STO ANTONIO",
+    "MARIA JULIA … ALBUQUERQUE" = "MARIA CELINA … ALBUQUERQUE" e "NOSSA SENHORA DA CONCEICAO"
+    = "LUZINETE MARIA DA CONCEICAO": palavras próprias de um nome que faltam no outro derrubam."""
+    if not alvo or not cand:
+        return False
+    ida, volta = _semelhanca(alvo, cand, idf), _semelhanca(cand, alvo, idf)
+    # nome do CNEFE abreviado, todo contido no da escola: com ≥2 palavras, ou com uma só se ela
+    # for exclusiva de um estabelecimento na cidade (MARINETE, IFAL; ANTONIO aparece em vários)
+    unica_rara = len(cand) == 1 and idf.get(next(iter(cand)), idf["__novo__"]) >= idf["__raro__"] - 1e-9
+    contido = volta == 1.0 and (len(cand) >= 2 or unica_rara)
+    # na volta, tolera o CNEFE trazer um complemento (… SALAO PAROQUIAL), mas não outro nome
+    return volta >= SEMELHANCA_MIN_CEP and (ida >= minimo or contido)
 
 
 def geocodificar_por_cnefe(faltantes: pd.DataFrame, cnefe: gpd.GeoDataFrame) -> pd.DataFrame:
@@ -150,20 +182,18 @@ def geocodificar_por_cnefe(faltantes: pd.DataFrame, cnefe: gpd.GeoDataFrame) -> 
         alvo = _tokens(r.get("escola"))
         lat = lon = None
         metodo, ref = "sem_coordenada", None
-        comum = ensino["tok"].map(lambda t: len(t & alvo))
+        comum = ensino["tok"].map(lambda t: len(_casadas(alvo, t)))
         cand = ensino[(ensino["CEP"] == cep) & (comum >= 1)] if cep else ensino.iloc[0:0]
         if len(cand):
-            # no mesmo CEP basta menos, mas não uma palavra solta (ex.: só SAMPAIO):
-            # o nome do CNEFE inteiro contido no da escola, ou metade do "peso" do nome
-            sem = cand["tok"].map(lambda t: _semelhanca(alvo, t, idf))
-            aceitos = sem[(sem >= SEMELHANCA_MIN_CEP) | cand["tok"].map(lambda t: bool(t) and t <= alvo)]
-            cand = cand.loc[aceitos.index]
+            # no mesmo CEP basta menos que no município inteiro, mas o nome confere nos dois sentidos
+            cand = cand[cand["tok"].map(lambda t: _nome_confere(alvo, t, idf, SEMELHANCA_MIN_CEP))]
         if len(cand):
             metodo = "cnefe_nome_no_cep"
-            melhor = cand.loc[sem[cand.index].idxmax()]
+            sem = cand["tok"].map(lambda t: _semelhanca(alvo, t, idf) + _semelhanca(t, alvo, idf))
+            melhor = cand.loc[sem.idxmax()]
         else:
-            sem = ensino.loc[comum >= 2, "tok"].map(lambda t: _semelhanca(alvo, t, idf))
-            sem = sem[sem >= SEMELHANCA_MIN_MUNICIPIO]
+            ok = ensino.loc[comum >= 2, "tok"].map(lambda t: _nome_confere(alvo, t, idf, SEMELHANCA_MIN_MUNICIPIO))
+            sem = ensino.loc[ok[ok].index, "tok"].map(lambda t: _semelhanca(alvo, t, idf) + _semelhanca(t, alvo, idf))
             if len(sem):
                 metodo = "cnefe_nome_municipio"
                 cand = ensino.loc[sem.index]
