@@ -48,6 +48,8 @@ chown -R 10001:10001 dados config
 setsid nohup bash -c '
   set -o pipefail
   echo "início: $(date "+%F %T")"
+  # "run" reaproveita a imagem que já existe: reconstrói antes para usar o código atual (git pull)
+  docker compose --profile ferramentas build -q pipeline &&
   docker compose run --rm -T pipeline python backend/scripts/processar_municipio.py "$0"
   r=$?
   chown -R 10001:10001 dados config

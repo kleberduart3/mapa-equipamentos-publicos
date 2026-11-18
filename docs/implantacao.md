@@ -80,7 +80,7 @@ Para os dados há dois caminhos:
 - **Processar no servidor** (baixa tudo de novo; ~1 h por município, quase todo o tempo na malha do OSM):
   ```bash
   docker compose build
-  docker compose run --rm pipeline python backend/scripts/processar_municipio.py 2700300
+  docker compose run --build --rm pipeline python backend/scripts/processar_municipio.py 2700300
   ```
 
 Arapiraca tem o Catálogo do INEP versionado no git, então reprocessar dá os mesmos números.
@@ -126,8 +126,8 @@ bash deploy/liberar_cidade.sh 2704302 status   # acompanha; no fim mostra a chec
 | Tarefa | Comando |
 |---|---|
 | Atualizar o código | `git pull && docker compose up -d --build` |
-| Novo município (à mão, no servidor) | `docker compose run --rm pipeline python backend/scripts/processar_municipio.py CÓDIGO` e depois `docker compose restart app` |
-| Mudou `config/parametros.yaml` | `docker compose run --rm pipeline python backend/scripts/calcular_cobertura.py -m CÓDIGO` e depois `docker compose restart app` |
+| Novo município (à mão, no servidor) | `docker compose run --build --rm pipeline python backend/scripts/processar_municipio.py CÓDIGO` e depois `docker compose restart app` |
+| Mudou `config/parametros.yaml` | `docker compose run --build --rm pipeline python backend/scripts/calcular_cobertura.py -m CÓDIGO` e depois `docker compose restart app` |
 | Link de senha (alguém esqueceu) | painel de contas, ou `docker compose exec app python -m backend.app.acesso.cli link email@x` |
 | Ver logs | `docker compose logs --tail 200 app` |
 | Listar contas | `docker compose exec app python -m backend.app.acesso.cli listar` |
